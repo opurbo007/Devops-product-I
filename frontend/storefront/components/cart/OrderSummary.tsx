@@ -113,7 +113,7 @@ export default function OrderSummary() {
         </dl>
 
         <a
-          href="#checkout"
+          href="/checkout"
           className="flex h-12 w-full items-center justify-center rounded-sm bg-zinc-950 text-[15px] font-semibold text-white hover:bg-zinc-800"
         >
           Continue to checkout

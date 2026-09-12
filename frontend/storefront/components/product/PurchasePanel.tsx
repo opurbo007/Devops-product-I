@@ -120,7 +120,7 @@ export default function PurchasePanel({
           {added ? "✓ Added to basket" : `Add to basket · ${gbp(product.price * qty)}`}
         </Button>
         <a
-          href="#checkout"
+          href="/checkout"
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-[#b3261e] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[#8f1d17]"
         >
           Buy now
