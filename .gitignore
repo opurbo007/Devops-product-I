@@ -137,7 +137,7 @@ helm-charts/*/tmpcharts/
 # ---------- Observability (Prometheus / Grafana / OTel) ----------
 prometheus-data/
 grafana-data/
-data/
+/data/
 *.db
 *.sqlite
 *.sqlite3
@@ -179,6 +179,9 @@ target/
 .gradle/
 
 # ---------- Misc ----------
+# AI agent files (local-only, never push)
+AGENTS.md
+CLAUDE.md
 .cache/
 .parcel-cache/
 .turbo/
