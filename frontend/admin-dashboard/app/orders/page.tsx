@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Table, TableHead, TableHeaderRow, TableHeadCell, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -193,12 +194,13 @@ export default function OrdersPage() {
                   <TableCell><Badge variant={orderBadge(o.status)}>{o.status}</Badge></TableCell>
                   <TableCell className="whitespace-nowrap text-zinc-600">{o.created}</TableCell>
                   <TableCell>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelected(o); }}
+                    <Link
+                      href={`/orders/${o.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="rounded-sm border border-zinc-300 px-2.5 py-1 text-[12.5px] font-semibold text-zinc-800 hover:border-zinc-950 hover:text-zinc-950"
                     >
                       View
-                    </button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))
