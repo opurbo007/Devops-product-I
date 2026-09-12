@@ -1,0 +1,195 @@
+# ============================================================
+# Root .gitignore — monorepo: Node.js services + Next.js frontend
+# Covers: frontend/, services/, shared/, infrastructure/,
+#         observability/, load-tests/
+# ============================================================
+
+# ---------- Dependencies ----------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnpm-store/
+package-lock.json
+# Uncomment if you want to ignore lockfiles (not recommended for apps):
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# bun.lockb
+
+# ---------- Build output ----------
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---------- TypeScript / transpile cache ----------
+*.js.map
+*.d.ts.map
+.tsbuildinfo
+.ttscache/
+.rpt2_cache/
+tsx-*
+
+# ---------- Testing / coverage ----------
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+playwright/.cache/
+.cypress/
+cypress/screenshots/
+cypress/videos/
+*.lcov
+
+# ---------- Env / secrets — NEVER commit ----------
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+service-account*.json
+*-credentials.json
+
+# ---------- Logs ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# ---------- OS ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- Editors / IDEs ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# ---------- Docker ----------
+.dockerignore
+# (build artifacts, not the Dockerfiles themselves)
+
+# ---------- Infrastructure (empty now, future-proof) ----------
+# Terraform / OpenTofu
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes / Helm / Kustomize
+kubeconfig
+*.kubeconfig
+helm-charts/*/charts/
+helm-charts/*/tmpcharts/
+
+# AWS / GCP / Azure local creds
+.aws/
+.azure/
+.gcloud/
+
+# ---------- Observability (Prometheus / Grafana / OTel) ----------
+prometheus-data/
+grafana-data/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- Load tests (k6 / locust / artillery) ----------
+load-tests/results/
+load-tests/reports/
+*.har
+k6-summary.json
+
+# ---------- Python (load-tests / scripts may use it) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.tox/
+*.egg-info/
+
+# ---------- Go (future-proof) ----------
+bin/
+*.exe
+*.out
+
+# ---------- Java / Maven / Gradle (future-proof) ----------
+target/
+*.class
+*.jar
+*.war
+.gradle/
+
+# ---------- Misc ----------
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+.vercel
+.netlify
+firebase-debug.log
+firestore-debug.log
