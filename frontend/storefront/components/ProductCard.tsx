@@ -1,7 +1,11 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { gbp } from "@/lib/format";
+import { useCart } from "@/lib/cart";
 import type { Product } from "@/data/products";
 
-function CategoryGlyph({ icon }: { icon: Product["icon"] }) {
+export function CategoryGlyph({ icon }: { icon: Product["icon"] }) {
   const common = "stroke-zinc-400";
   switch (icon) {
     case "tv":
@@ -82,6 +86,13 @@ function Stars({ rating }: { rating: number }) {
 
 export default function ProductCard({ product }: { product: Product }) {
   const saving = product.wasPrice ? product.wasPrice - product.price : 0;
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   return (
     <article className="group flex flex-col rounded-sm border border-zinc-200 bg-white">
@@ -145,9 +156,15 @@ export default function ProductCard({ product }: { product: Product }) {
 
         <button
           type="button"
+          onClick={() => {
+            addItem(product.id);
+            setAdded(true);
+            if (timer.current) clearTimeout(timer.current);
+            timer.current = setTimeout(() => setAdded(false), 2000);
+          }}
           className="mt-2 h-10 w-full rounded-sm border border-zinc-950 text-[14px] font-semibold text-zinc-950 transition-colors hover:bg-zinc-950 hover:text-white"
         >
-          Add to basket
+          {added ? "✓ Added" : "Add to basket"}
         </button>
       </div>
     </article>

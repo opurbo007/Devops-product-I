@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCart } from "@/lib/cart";
 
 const categories = [
   "TVs & Projectors",
@@ -53,6 +54,7 @@ function PinIcon() {
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const { itemCount: count } = useCart();
 
   return (
     <header className="bg-white text-zinc-900">
@@ -136,15 +138,17 @@ export default function Header() {
               </span>
             </a>
             <a
-              href="#"
+              href="/cart"
               className="relative flex items-center gap-2 rounded-sm bg-zinc-100 px-3 py-2.5 text-[13.5px] font-semibold hover:bg-zinc-200"
-              aria-label="Basket, 2 items"
+              aria-label={`Basket, ${count} ${count === 1 ? "item" : "items"}`}
             >
               <BasketIcon />
               <span className="hidden sm:inline">Basket</span>
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#b3261e] px-1 text-[11px] font-bold text-white">
-                2
-              </span>
+              {count > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#b3261e] px-1 text-[11px] font-bold text-white">
+                  {count}
+                </span>
+              )}
             </a>
           </div>
         </div>

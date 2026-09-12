@@ -6,6 +6,7 @@ import type { Product } from "@/data/catalog";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/separator";
 import { deliveryFor, variantLabel } from "@/lib/productDetails";
+import { useCart } from "@/lib/cart";
 import { gbp } from "@/lib/format";
 
 export default function PurchasePanel({
@@ -16,6 +17,7 @@ export default function PurchasePanel({
   variants: Product[];
 }) {
   const router = useRouter();
+  const { addItem } = useCart();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
@@ -29,6 +31,7 @@ export default function PurchasePanel({
   const delivery = deliveryFor(product);
 
   const addToBasket = () => {
+    addItem(product.id, qty);
     setAdded(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setAdded(false), 2500);
