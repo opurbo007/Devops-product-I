@@ -103,7 +103,7 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>        <h3 className="text-[14.5px] font-medium leading-snug text-zinc-900 group-hover:underline">
-          <a href="#">{product.name}</a>
+          <a href={`/products/${product.id}`}>{product.name}</a>
         </h3>
         {(product.ramGB || product.storageGB || product.colour) && (
           <p className="text-[12.5px] text-zinc-500">
