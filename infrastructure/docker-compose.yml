@@ -1,12 +1,14 @@
 services:
   postgres:
     image: postgres:16
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "00000000"
-      POSTGRES_DB: app
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
