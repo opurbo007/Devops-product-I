@@ -18,15 +18,14 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
 app.use(cookieParser());
-app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/auth", authRoutes);
+app.use("/auth", express.json(), authRoutes);
 
-app.use("/api/orders", requireAuth, proxyToService(orderServiceUrl, "/api/orders"));
+app.use("/api", requireAuth, proxyToService(orderServiceUrl, "/api"));
 
 app.use((_req, res) => {
   res.status(404).json({ error: { message: "Not found" } });

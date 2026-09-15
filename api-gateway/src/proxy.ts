@@ -10,7 +10,7 @@ export function proxyToService(target: string, pathPrefix: string): RequestHandl
   const options: Options = {
     target,
     changeOrigin: true,
-    pathRewrite: { "^/api": "" },
+    pathRewrite: { [`^${pathPrefix}`]: "" },
     on: {
       proxyReq: (proxyReq, req) => {
         const user = (req as { user?: { id: string; email: string; role: string } }).user;
