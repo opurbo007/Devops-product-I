@@ -9,6 +9,14 @@ export interface Order {
   updated_at: Date;
 }
 
+export async function getOrderById(id: string): Promise<Order | null> {
+  const result = await pool.query<Order>(
+    "SELECT id, customer_id, status, total, created_at, updated_at FROM orders WHERE id = $1",
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function createOrder(
   customerId: string,
   total: number | string,
