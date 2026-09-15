@@ -2,6 +2,7 @@ import express from "express";
 import { z } from "zod";
 import dotenv from "dotenv";
 import { createOrder, getOrderById } from "./db/orders.repository.js";
+import { validateInternalAuth } from "./middleware/validateInternalAuth.js";
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ app.get("/health", (req, res) => {
   res.send({ status: "ok" });
 });
 
-app.post("/orders", async (req, res) => {
+app.post("/orders", validateInternalAuth, async (req, res) => {
   const parsed = createOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -38,7 +39,7 @@ app.post("/orders", async (req, res) => {
   res.status(201).json(order);
 });
 
-app.get("/orders/:id", async (req, res) => {
+app.get("/orders/:id", validateInternalAuth, async (req, res) => {
   const parsed = z.string().uuid().safeParse(req.params.id);
   if (!parsed.success) {
     return res.status(400).json({
