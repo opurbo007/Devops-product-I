@@ -1,14 +1,13 @@
-import { startConsumer } from "./consumers/inventoryReserved.js";
+import { startConsumer } from "./consumers/orderCreated.js";
 import { publishOutboxEvents } from "./outbox/publisher.js";
 
 let running = true;
 process.on("SIGINT", () => (running = false));
 process.on("SIGTERM", () => (running = false));
 
-const INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2_000);
-
 await startConsumer();
 
+const INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2_000);
 console.log(`outbox publisher polling every ${INTERVAL_MS}ms`);
 
 while (running) {

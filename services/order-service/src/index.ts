@@ -13,6 +13,9 @@ app.use(express.json());
 const createOrderSchema = z.object({
   customerId: z.string().uuid(),
   total: z.number().positive().finite(),
+  items: z
+    .array(z.object({ sku: z.string().min(1), qty: z.number().int().positive() }))
+    .default([]),
 });
 
 app.get("/", (req, res) => {
@@ -34,8 +37,8 @@ app.post("/orders", validateInternalAuth, async (req, res) => {
     });
   }
 
-  const { customerId, total } = parsed.data;
-  const order = await createOrder(customerId, total);
+  const { customerId, total, items } = parsed.data;
+  const order = await createOrder(customerId, total, items);
   res.status(201).json(order);
 });
 

@@ -1,19 +1,24 @@
-import express from "express";
-import dotenv from "dotenv";
-dotenv.config();
+import { startConsumer } from "./consumers/paymentCompleted.js";
+import { publishOutboxEvents } from "./outbox/publisher.js";
 
-const app = express();
-const port = process.env.PORT || 3000;
-app.use(express.json());
+let running = true;
+process.on("SIGINT", () => (running = false));
+process.on("SIGTERM", () => (running = false));
 
-app.get("/", (req, res) => {
-  res.send({ message: "Hello World" });
-});
+const INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2_000);
 
-app.get("/health", (req, res) => {
-  res.send({ status: "ok" });
-});
+await startConsumer();
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+console.log(`outbox publisher polling every ${INTERVAL_MS}ms`);
+
+while (running) {
+  try {
+    const n = await publishOutboxEvents();
+    if (n > 0) console.log(`published ${n} event(s)`);
+  } catch (e) {
+    console.error("outbox publisher error:", e);
+  }
+  await new Promise((r) => setTimeout(r, INTERVAL_MS));
+}
+
+process.exit(0);
