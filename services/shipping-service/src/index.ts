@@ -1,5 +1,15 @@
+import dotenv from "dotenv";
+import { createApp } from "./server.js";
 import { startConsumer } from "./consumers/paymentCompleted.js";
 import { publishOutboxEvents } from "./outbox/publisher.js";
+
+dotenv.config();
+
+const port = Number(process.env.PORT ?? 3002);
+const app = createApp();
+app.listen(port, () => {
+  console.log(`shipping-service listening on port ${port}`);
+});
 
 let running = true;
 process.on("SIGINT", () => (running = false));

@@ -1,20 +1,26 @@
-import { pool } from "../db/pool.js";
+import { prisma } from "../db/prisma.js";
 import { consumer } from "../kafka/consumer.js";
+import { producer, connectProducer } from "../kafka/producer.js";
+import { withDlq } from "shared-platform";
 
 export async function processPaymentCompleted(
   idempotencyKey: string,
   event: { orderId: string },
 ): Promise<void> {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
+  // Chaos kill-switch (mirrors PAYMENT_DECLINE_CODE / INVENTORY_FAIL_RESERVE):
+  // SHIPPING_FAIL_DISPATCH=1 forces the dispatch path to fail before any DB
+  // write, so the admin dashboard can exercise retry/DLQ behavior on demand.
+  // Thrown outside the transaction: nothing is recorded, the message is
+  // retried until the switch is lifted.
+  if (process.env.SHIPPING_FAIL_DISPATCH === "1") {
+    throw new Error("forced dispatch failure (SHIPPING_FAIL_DISPATCH=1)");
+  }
 
-    const dup = await client.query(
-      "SELECT 1 FROM processed_events WHERE idempotency_key = $1",
-      [idempotencyKey],
-    );
-    if (dup.rows.length > 0) {
-      await client.query("COMMIT");
+  await prisma.$transaction(async (tx) => {
+    const dup = await tx.processedEvent.findUnique({
+      where: { idempotencyKey },
+    });
+    if (dup) {
       console.log(`[skip] already processed payment for order ${event.orderId}`);
       return;
     }
@@ -22,34 +28,28 @@ export async function processPaymentCompleted(
     const carrier = "mock-carrier";
     const trackingNumber = `TRACK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
-    await client.query(
-      "INSERT INTO shipments (order_id, status, carrier, tracking_number) VALUES ($1, $2, $3, $4)",
-      [event.orderId, "dispatched", carrier, trackingNumber],
-    );
-    await client.query(
-      "INSERT INTO outbox (topic, payload) VALUES ($1, $2)",
-      [
-        "shipping.dispatched",
-        JSON.stringify({
+    await tx.shipment.create({
+      data: {
+        orderId: event.orderId,
+        status: "dispatched",
+        carrier,
+        trackingNumber,
+      },
+    });
+    await tx.outbox.create({
+      data: {
+        topic: "shipping.dispatched",
+        payload: {
           orderId: event.orderId,
           carrier,
           trackingNumber,
           dispatchedAt: new Date().toISOString(),
-        }),
-      ],
-    );
-    await client.query(
-      "INSERT INTO processed_events (idempotency_key) VALUES ($1)",
-      [idempotencyKey],
-    );
-    await client.query("COMMIT");
+        },
+      },
+    });
+    await tx.processedEvent.create({ data: { idempotencyKey } });
     console.log(`[shipping.dispatched] order ${event.orderId}`);
-  } catch (e) {
-    await client.query("ROLLBACK");
-    throw e;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function startConsumer(): Promise<void> {
@@ -60,11 +60,15 @@ export async function startConsumer(): Promise<void> {
       const idempotencyKey = message.key?.toString() ?? "";
       const value = JSON.parse(message.value?.toString() ?? "{}");
       console.log(`[in] payment.completed key=${idempotencyKey}`);
-      try {
-        await processPaymentCompleted(idempotencyKey, value);
-      } catch (e) {
-        console.error("[error] processing payment.completed", e);
-      }
+      await withDlq(
+        producer,
+        connectProducer,
+        "shipping-service",
+        "payment.completed",
+        idempotencyKey,
+        value,
+        () => processPaymentCompleted(idempotencyKey, value),
+      );
     },
   });
   console.log("shipping consumer running");
