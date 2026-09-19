@@ -1,0 +1,19 @@
+name: ci-api-gateway
+on:
+  push:
+    paths:
+      - "api-gateway/**"
+      - "shared/prisma/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "api-gateway/**"
+      - "shared/prisma/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: api-gateway
+      service-path: api-gateway

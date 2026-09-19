@@ -1,0 +1,21 @@
+name: ci-notification-service
+on:
+  push:
+    paths:
+      - "services/notification-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/notification-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: notification-service
+      service-path: services/notification-service

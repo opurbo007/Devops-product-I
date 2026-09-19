@@ -1,0 +1,21 @@
+name: ci-inventory-service
+on:
+  push:
+    paths:
+      - "services/inventory-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/inventory-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: inventory-service
+      service-path: services/inventory-service

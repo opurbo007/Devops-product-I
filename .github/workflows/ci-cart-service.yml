@@ -1,0 +1,19 @@
+name: ci-cart-service
+on:
+  push:
+    paths:
+      - "services/cart-recommendation-service/**"
+      - "shared/prisma/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/cart-recommendation-service/**"
+      - "shared/prisma/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: cart-recommendation-service
+      service-path: services/cart-recommendation-service

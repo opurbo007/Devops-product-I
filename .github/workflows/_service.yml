@@ -1,0 +1,39 @@
+# Reusable per-service backend check: install, generate the Prisma client from
+# the shared schema, and typecheck. Called by the ci-* workflows, which own
+# the path filters. Secrets are not needed — generation uses a dummy URL.
+name: _service
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+      service-path:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ inputs.service-path }}/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: ${{ inputs.service-path }}
+
+      - name: Generate Prisma client
+        run: >
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/app"
+          npx prisma generate --schema ../../shared/prisma/prisma/schema.prisma
+        working-directory: ${{ inputs.service-path }}
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+        working-directory: ${{ inputs.service-path }}

@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: api-gateway
+    static_configs:
+      - targets: ["api-gateway:8080"]
+
+  - job_name: order-service
+    static_configs:
+      - targets: ["order-service:3000"]
+
+  - job_name: inventory-service
+    static_configs:
+      - targets: ["inventory-service:3001"]
+
+  - job_name: shipping-service
+    static_configs:
+      - targets: ["shipping-service:3002"]
+
+  - job_name: payment-service
+    static_configs:
+      - targets: ["payment-service:3003"]
+
+  - job_name: notification-service
+    static_configs:
+      - targets: ["notification-service:3004"]
+
+  - job_name: cart-service
+    static_configs:
+      - targets: ["cart-service:3005"]

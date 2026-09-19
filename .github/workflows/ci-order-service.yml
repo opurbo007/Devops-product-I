@@ -1,0 +1,21 @@
+name: ci-order-service
+on:
+  push:
+    paths:
+      - "services/order-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/order-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: order-service
+      service-path: services/order-service

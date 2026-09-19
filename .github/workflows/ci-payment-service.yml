@@ -1,0 +1,21 @@
+name: ci-payment-service
+on:
+  push:
+    paths:
+      - "services/payment-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/payment-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: payment-service
+      service-path: services/payment-service

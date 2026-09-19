@@ -1,0 +1,21 @@
+name: ci-shipping-service
+on:
+  push:
+    paths:
+      - "services/shipping-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/shipping-service/**"
+      - "shared/prisma/**"
+      - "shared/platform/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_service.yml
+    with:
+      service-name: shipping-service
+      service-path: services/shipping-service
