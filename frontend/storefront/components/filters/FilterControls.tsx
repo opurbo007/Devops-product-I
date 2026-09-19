@@ -98,7 +98,7 @@ export default function FilterControls({
             label={`${f.value}GB`}
             count={f.count}
             checked={filters.ram.includes(f.value)}
-            onChange={(c) => patch({ ram: toggle(filters.ram, f.value) })}
+            onChange={() => patch({ ram: toggle(filters.ram, f.value) })}
           />
         ))}
       </FilterSection>
@@ -110,7 +110,7 @@ export default function FilterControls({
             label={f.value >= 1000 ? `${f.value / 1000}TB SSD` : `${f.value}GB SSD`}
             count={f.count}
             checked={filters.storage.includes(f.value)}
-            onChange={(c) => patch({ storage: toggle(filters.storage, f.value) })}
+            onChange={() => patch({ storage: toggle(filters.storage, f.value) })}
           />
         ))}
       </FilterSection>

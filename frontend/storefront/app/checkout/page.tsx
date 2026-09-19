@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,10 @@ import ReviewStep from "@/components/checkout/ReviewStep";
 import CheckoutSummary from "@/components/checkout/CheckoutSummary";
 import OrderSuccess, { type PlacedOrder } from "@/components/checkout/OrderSuccess";
 import { EMPTY_CHECKOUT, type CheckoutData } from "@/components/checkout/types";
-import { DELIVERY_OPTIONS, useCart } from "@/lib/cart";
+import { DELIVERY_OPTIONS, productById, useCart } from "@/lib/cart";
+import { skuFor } from "@/lib/productDetails";
+import { useAuth } from "@/lib/auth";
+import { ApiError, apiCreateOrder } from "@/lib/api";
 import {
   expiryOk,
   hasErrors,
@@ -60,6 +64,8 @@ function Spinner() {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const { lines, total, itemCount, setDelivery, clearCart } = useCart();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<CheckoutData>(EMPTY_CHECKOUT);
@@ -68,7 +74,6 @@ export default function CheckoutPage() {
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [order, setOrder] = useState<PlacedOrder | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const patch = (p: Partial<CheckoutData>) => {
     if (p.delivery) setDelivery(p.delivery);
@@ -94,32 +99,44 @@ export default function CheckoutPage() {
     scrollTop();
   };
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
+    if (!user) {
+      router.push("/login?next=/checkout");
+      return;
+    }
     setPlacing(true);
     setPlaceError(null);
-    timer.current = setTimeout(() => {
-      const digits = data.cardNumber.replace(/\D/g, "");
-      if (data.payMethod === "card" && digits.endsWith("0002")) {
-        setPlacing(false);
-        setPlaceError(
-          "Your card was declined (code 51 — insufficient funds). No money has been taken. Check your details or try a different card."
-        );
-        scrollTop();
-        return;
-      }
-      const number = `VL-${String(Date.now()).slice(-6)}`;
-      const deliveryLabel = DELIVERY_OPTIONS.find((d) => d.id === data.delivery)?.label ?? "Standard delivery";
+    try {
+      const items = lines.map((l) => {
+        const p = productById(l.id);
+        if (!p) throw new Error(`Product ${l.id} is no longer available.`);
+        return { sku: skuFor(p), qty: l.qty };
+      });
+      // The saga runs async (reserve → pay → ship); the order page polls it live.
+      const created = await apiCreateOrder({
+        customerId: user.id,
+        total: Math.round(total * 100) / 100,
+        items,
+      });
+      const deliveryLabel =
+        DELIVERY_OPTIONS.find((d) => d.id === data.delivery)?.label ?? "Standard delivery";
       setOrder({
-        number,
+        number: created.id.slice(0, 8).toUpperCase(),
         email: data.email,
         total,
         itemCount,
         deliveryLabel,
+        orderId: created.id,
       });
       clearCart();
+    } catch (e) {
+      setPlaceError(
+        e instanceof ApiError ? e.message : "Order failed — please try again.",
+      );
+    } finally {
       setPlacing(false);
       scrollTop();
-    }, 1800);
+    }
   };
 
   return (

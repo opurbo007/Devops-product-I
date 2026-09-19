@@ -84,12 +84,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // Intentional hydration gate: localStorage is unavailable during SSR, so
+    // the persisted basket applies on mount to avoid a hydration mismatch.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const s = load();
     setLines(s.lines.filter((l) => productById(l.id)));
     setSaved(s.saved.filter((id) => productById(id)));
     setPromo(s.promo);
     setDelivery(s.delivery ?? "standard");
     setHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {

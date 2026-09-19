@@ -8,6 +8,7 @@ export type PlacedOrder = {
   total: number;
   itemCount: number;
   deliveryLabel: string;
+  orderId?: string;
 };
 
 export default function OrderSuccess({ order }: { order: PlacedOrder }) {
@@ -30,8 +31,13 @@ export default function OrderSuccess({ order }: { order: PlacedOrder }) {
         </ul>
       </div>
       <div className="mt-6 flex flex-col gap-2.5">
+        {order.orderId && (
+          <Link href={`/orders/${order.orderId}`}>
+            <Button className="w-full" size="lg">Track your order</Button>
+          </Link>
+        )}
         <Link href="/products">
-          <Button className="w-full" size="lg">Continue shopping</Button>
+          <Button className="w-full" size="lg" variant={order.orderId ? "outline" : "default"}>Continue shopping</Button>
         </Link>
         <Link href="/">
           <Button variant="outline" className="w-full" size="lg">Back to home</Button>

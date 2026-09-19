@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -114,7 +115,7 @@ export default function ProductsPage() {
           {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="mb-3 text-[12.5px] text-zinc-500">
             <ol className="flex flex-wrap items-center gap-1.5">
-              <li><a href="/" className="hover:text-zinc-950 hover:underline">Home</a></li>
+              <li><Link href="/" className="hover:text-zinc-950 hover:underline">Home</Link></li>
               <li aria-hidden="true">/</li>
               <li><a href="#" className="hover:text-zinc-950 hover:underline">Computing</a></li>
               <li aria-hidden="true">/</li>

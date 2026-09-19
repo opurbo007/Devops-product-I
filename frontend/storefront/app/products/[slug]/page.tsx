@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -50,11 +51,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="mb-5 text-[12.5px] text-zinc-500">
             <ol className="flex flex-wrap items-center gap-1.5">
-              <li><a href="/" className="hover:text-zinc-950 hover:underline">Home</a></li>
+              <li><Link href="/" className="hover:text-zinc-950 hover:underline">Home</Link></li>
               <li aria-hidden="true">/</li>
               <li><a href="#" className="hover:text-zinc-950 hover:underline">Computing</a></li>
               <li aria-hidden="true">/</li>
-              <li><a href="/products" className="hover:text-zinc-950 hover:underline">Laptops &amp; PCs</a></li>
+              <li><Link href="/products" className="hover:text-zinc-950 hover:underline">Laptops &amp; PCs</Link></li>
               <li aria-hidden="true">/</li>
               <li aria-current="page" className="max-w-[220px] truncate font-semibold text-zinc-900 sm:max-w-none">
                 {product.name}
@@ -119,9 +120,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <section aria-label="You may also like" className="mt-12 border-t border-zinc-200 pt-8">
             <div className="mb-5 flex items-end justify-between gap-4">
               <h2 className="text-[20px] font-bold tracking-tight text-zinc-950">You may also like</h2>
-              <a href="/products" className="shrink-0 border-b border-zinc-950 pb-0.5 text-[13.5px] font-semibold hover:text-zinc-600 hover:border-zinc-600">
+              <Link href="/products" className="shrink-0 border-b border-zinc-950 pb-0.5 text-[13.5px] font-semibold hover:text-zinc-600 hover:border-zinc-600">
                 View all laptops →
-              </a>
+              </Link>
             </div>
             <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
               {related.map((p) => (

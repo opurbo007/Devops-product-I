@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
 
 const categories = [
   "TVs & Projectors",
@@ -55,6 +57,7 @@ function PinIcon() {
 export default function Header() {
   const [open, setOpen] = useState(false);
   const { itemCount: count } = useCart();
+  const { user, logout } = useAuth();
 
   return (
     <header className="bg-white text-zinc-900">
@@ -68,7 +71,7 @@ export default function Header() {
           <nav className="hidden items-center gap-5 md:flex" aria-label="Utility">
             <a href="#" className="hover:text-white">Stores</a>
             <a href="#" className="hover:text-white">Help &amp; Contact</a>
-            <a href="#" className="hover:text-white">Track my order</a>
+            <a href="/tracking" className="hover:text-white">Track my order</a>
             <a href="#" className="hover:text-white">Trade</a>
           </nav>
           <a href="#" className="md:hidden hover:text-white">Stores</a>
@@ -92,14 +95,14 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <a href="/" className="flex items-baseline gap-1.5" aria-label="Volt Electricals home">
+          <Link href="/" className="flex items-baseline gap-1.5" aria-label="Volt Electricals home">
             <span className="bg-zinc-950 px-2 py-1 text-[17px] font-extrabold tracking-tight text-white">
               VOLT
             </span>
             <span className="hidden text-[13px] font-semibold uppercase tracking-[0.14em] text-zinc-500 xs:inline sm:inline">
               Electricals
             </span>
-          </a>
+          </Link>
 
           {/* Search (desktop) */}
           <form role="search" className="hidden flex-1 md:flex" action="#">
@@ -130,13 +133,24 @@ export default function Header() {
                 London E2
               </span>
             </a>
-            <a href="#" className="hidden items-center gap-2 rounded-sm px-3 py-2 text-[13.5px] font-medium hover:bg-zinc-100 sm:flex">
+            <Link href={user ? "/orders" : "/login"} className="hidden items-center gap-2 rounded-sm px-3 py-2 text-[13.5px] font-medium hover:bg-zinc-100 sm:flex">
               <AccountIcon />
               <span className="hidden text-left leading-tight xl:block">
-                <span className="block text-[11px] font-normal text-zinc-500">Hello, Sign in</span>
-                Account
+                <span className="block text-[11px] font-normal text-zinc-500">
+                  {user ? user.email : "Hello, Sign in"}
+                </span>
+                {user ? "Orders" : "Account"}
               </span>
-            </a>
+            </Link>
+            {user && (
+              <button
+                type="button"
+                onClick={logout}
+                className="hidden rounded-sm px-3 py-2 text-[13.5px] font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 sm:block"
+              >
+                Sign out
+              </button>
+            )}
             <a
               href="/cart"
               className="relative flex items-center gap-2 rounded-sm bg-zinc-100 px-3 py-2.5 text-[13.5px] font-semibold hover:bg-zinc-200"
