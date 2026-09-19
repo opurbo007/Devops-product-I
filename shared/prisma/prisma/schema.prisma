@@ -1,0 +1,128 @@
+// Shared Prisma schema — single source of truth for every Postgres table.
+// Each microservice points DATABASE_URL at its own database; Prisma Migrate
+// applies the full schema to every DB (services only touch their own tables).
+// This mirrors the pre-existing raw-SQL migrations (incl. outbox + processed_events).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("customer")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([email], map: "idx_users_email")
+  @@map("users")
+}
+
+model Order {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  status     String   @default("pending")
+  total      Decimal  @default(0.00) @db.Decimal(10, 2)
+  items      Json     @default("[]")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([customerId], map: "idx_orders_customer_id")
+  @@index([status], map: "idx_orders_status")
+  @@map("orders")
+}
+
+model Stock {
+  sku               String @id
+  availableQuantity Int    @default(0) @map("available_quantity")
+
+  @@map("stock")
+}
+
+model Reservation {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  sku       String
+  quantity  Int
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([orderId, sku])
+  @@index([orderId], map: "idx_reservations_order_id")
+  @@index([status], map: "idx_reservations_status")
+  @@map("reservations")
+}
+
+model Payment {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId           String   @unique @map("order_id") @db.Uuid
+  status            String
+  amountMinor       Int      @default(0) @map("amount_minor")
+  currency          String   @default("USD")
+  providerReference String?  @map("provider_reference")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status], map: "idx_payments_status")
+  @@map("payments")
+}
+
+model Shipment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String   @unique @map("order_id") @db.Uuid
+  status         String   @default("dispatched")
+  carrier        String?
+  trackingNumber String?  @map("tracking_number")
+  dispatchedAt   DateTime @default(now()) @map("dispatched_at") @db.Timestamptz(6)
+
+  @@index([orderId], map: "idx_shipments_order_id")
+  @@map("shipments")
+}
+
+model CartItem {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  sku       String
+  qty       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, sku])
+  @@index([userId], map: "idx_cart_items_user_id")
+  @@map("cart_items")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  channel   String
+  template  String
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orderId], map: "idx_notifications_order_id")
+  @@map("notifications")
+}
+
+model Outbox {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topic     String
+  payload   Json
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([sent], map: "idx_outbox_sent")
+  @@index([createdAt], map: "idx_outbox_created_at")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  idempotencyKey String   @id @map("idempotency_key") @db.Uuid
+  processedAt    DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

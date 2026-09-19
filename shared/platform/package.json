@@ -1,0 +1,19 @@
+{
+  "name": "shared-platform",
+  "version": "1.0.0",
+  "description": "Shared platform helpers: Kafka dead-letter queue (DLQ) handling and runtime chaos flags.",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "kafkajs": "^2.2.4",
+    "prom-client": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^7.0.2"
+  }
+}

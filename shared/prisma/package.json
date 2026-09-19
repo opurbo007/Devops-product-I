@@ -1,0 +1,27 @@
+{
+  "name": "shared-prisma",
+  "version": "1.0.0",
+  "description": "Shared Prisma ORM package — single source of truth for all Postgres models (users, orders, stock, payments, shipments, carts, notifications + outbox/processed_events).",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "prisma": "^6.0.0",
+    "typescript": "^7.0.2"
+  }
+}
