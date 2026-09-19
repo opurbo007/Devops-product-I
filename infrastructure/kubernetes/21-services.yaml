@@ -1,0 +1,64 @@
+# One ClusterIP Service per app (gateway is exposed via Ingress/LoadBalancer
+# outside this repo's scope — point it at api-gateway:8080).
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: ecom
+spec:
+  selector: { app: order-service }
+  ports: [{ port: 3000 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  namespace: ecom
+spec:
+  selector: { app: inventory-service }
+  ports: [{ port: 3001 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping-service
+  namespace: ecom
+spec:
+  selector: { app: shipping-service }
+  ports: [{ port: 3002 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: ecom
+spec:
+  selector: { app: payment-service }
+  ports: [{ port: 3003 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: ecom
+spec:
+  selector: { app: notification-service }
+  ports: [{ port: 3004 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart-service
+  namespace: ecom
+spec:
+  selector: { app: cart-service }
+  ports: [{ port: 3005 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: ecom
+spec:
+  selector: { app: api-gateway }
+  ports: [{ port: 8080 }]

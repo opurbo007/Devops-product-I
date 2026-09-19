@@ -11,6 +11,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
@@ -34,17 +35,168 @@ services:
     environment:
       KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:${ZOOKEEPER_PORT:-2181}"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:${KAFKA_BOOTSTRAP_PORT:-9092}"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      # INTERNAL for containers, EXTERNAL for host dev tools.
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:${KAFKA_BOOTSTRAP_PORT:-9092}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
     ports:
       - "${KAFKA_BOOTSTRAP_PORT:-9092}:9092"
+      - "29092:29092"
     volumes:
       - kafka_data:/var/lib/kafka/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+
+  # --- Application services (build contexts are the repo root) ---
+  order-service:
+    build:
+      context: ..
+      dockerfile: services/order-service/src/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/app"
+      KAFKA_BROKERS: "kafka:29092"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+      - kafka
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: services/inventory-service/src/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/inventory"
+      KAFKA_BROKERS: "kafka:29092"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+      - kafka
+
+  shipping-service:
+    build:
+      context: ..
+      dockerfile: services/shipping-service/src/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/shipping"
+      KAFKA_BROKERS: "kafka:29092"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+      - kafka
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: services/payment-service/src/Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/payment"
+      KAFKA_BROKERS: "kafka:29092"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    depends_on:
+      - postgres
+      - kafka
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: services/notification-service/src/Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/notification"
+      KAFKA_BROKERS: "kafka:29092"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+      - kafka
+
+  cart-service:
+    build:
+      context: ..
+      dockerfile: services/cart-recommendation-service/src/Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/cart"
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/src/Dockerfile
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/app"
+      REDIS_URL: "redis://redis:6379"
+      ORDER_SERVICE_URL: "http://order-service:3000"
+      INVENTORY_SERVICE_URL: "http://inventory-service:3001"
+      SHIPPING_SERVICE_URL: "http://shipping-service:3002"
+      PAYMENT_SERVICE_URL: "http://payment-service:3003"
+      NOTIFICATION_SERVICE_URL: "http://notification-service:3004"
+      CART_SERVICE_URL: "http://cart-service:3005"
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me}
+      JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+    depends_on:
+      - postgres
+      - redis
+      - order-service
+      - inventory-service
+      - shipping-service
+      - payment-service
+      - notification-service
+      - cart-service
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ../observability/prometheus-config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    depends_on:
+      - api-gateway
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "${GRAFANA_PORT:-3100}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../observability/grafana-dashboards:/etc/grafana/provisioning/dashboards/ecom:ro
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:
   zookeeper_data:
   zookeeper_log:
   kafka_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
