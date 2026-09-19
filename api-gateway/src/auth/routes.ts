@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
-import { pool } from "../db/pool.js";
+import { prisma, Prisma } from "../db/prisma.js";
 import {
   mintAccessToken,
   mintRefreshToken,
@@ -21,13 +21,6 @@ const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
-interface UserRow {
-  id: string;
-  email: string;
-  password_hash: string;
-  role: string;
-}
-
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE = "refresh_token";
 
@@ -44,21 +37,22 @@ router.post("/register", async (req: Request, res: Response) => {
   }
 
   const { email, password, role } = parsed.data;
-  const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   try {
-    const result = await pool.query<UserRow>(
-      "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, password_hash, role",
-      [email.toLowerCase(), password_hash, role ?? "customer"],
-    );
-    const user = result.rows[0]!;
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        passwordHash,
+        role: role ?? "customer",
+      },
+      select: { id: true, email: true, role: true },
+    });
     res.status(201).json({ id: user.id, email: user.email, role: user.role });
   } catch (e: unknown) {
     if (
-      typeof e === "object" &&
-      e !== null &&
-      "code" in e &&
-      (e as { code: string }).code === "23505"
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
     ) {
       res.status(409).json({ error: { message: "Email already registered" } });
       return;
@@ -80,12 +74,10 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 
   const { email, password } = parsed.data;
-  const result = await pool.query<UserRow>(
-    "SELECT id, email, password_hash, role FROM users WHERE email = $1",
-    [email.toLowerCase()],
-  );
-  const user = result.rows[0];
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     res.status(401).json({ error: { message: "Invalid email or password" } });
     return;
   }
@@ -116,11 +108,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
     return;
   }
 
-  const result = await pool.query<UserRow>(
-    "SELECT id, email, password_hash, role FROM users WHERE id = $1",
-    [sub],
-  );
-  const user = result.rows[0];
+  const user = await prisma.user.findUnique({ where: { id: sub } });
   if (!user) {
     res.status(401).json({ error: { message: "User no longer exists" } });
     return;
