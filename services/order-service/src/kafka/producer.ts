@@ -16,11 +16,20 @@ const kafka = new Kafka({
 const producer: Producer = kafka.producer();
 
 let connecting: Promise<void> | null = null;
+let connected = false;
+// Idempotent: safe to call from the consumer DLQ path, the outbox relay,
+// and startup in any order — the producer connects exactly once.
 export async function connectProducer(): Promise<void> {
+  if (connected) return;
   if (!connecting) {
-    connecting = producer.connect().finally(() => {
-      connecting = null;
-    });
+    connecting = producer
+      .connect()
+      .then(() => {
+        connected = true;
+      })
+      .finally(() => {
+        connecting = null;
+      });
   }
   return connecting;
 }

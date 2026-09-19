@@ -50,3 +50,16 @@ export function validateInternalAuth(
     res.status(401).json({ error: { message: "Invalid internal credentials" } });
   }
 }
+
+// RBAC: DLQ replay re-emits events and chaos flags change failure behavior — admin-only.
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (req.internalUser?.role !== "admin") {
+    res.status(403).json({ error: { message: "Admin role required" } });
+    return;
+  }
+  next();
+}
