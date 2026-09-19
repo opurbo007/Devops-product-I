@@ -1,5 +1,15 @@
-import { startConsumer } from "./consumers/orderCreated.js";
+import dotenv from "dotenv";
+import { createApp } from "./server.js";
+import { startConsumers } from "./consumers/index.js";
 import { publishOutboxEvents } from "./outbox/publisher.js";
+
+dotenv.config();
+
+const port = Number(process.env.PORT ?? 3001);
+const app = createApp();
+app.listen(port, () => {
+  console.log(`inventory-service listening on port ${port}`);
+});
 
 let running = true;
 process.on("SIGINT", () => (running = false));
@@ -7,7 +17,7 @@ process.on("SIGTERM", () => (running = false));
 
 const INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2_000);
 
-await startConsumer();
+await startConsumers();
 
 console.log(`outbox publisher polling every ${INTERVAL_MS}ms`);
 
