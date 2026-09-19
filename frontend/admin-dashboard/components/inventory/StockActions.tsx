@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import type { StockEvent } from "@/lib/inventory";
+import { ApiError, apiAdjustStock } from "@/lib/api";
 
 export function AdjustStock({
   sku,
@@ -16,24 +17,34 @@ export function AdjustStock({
   const [qty, setQty] = useState("10");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const apply = () => {
+  const apply = async () => {
     const n = parseInt(qty, 10);
     if (!Number.isFinite(n) || n <= 0) {
       setError("Enter a quantity of 1 or more.");
       return;
     }
-    const delta = kind === "writeoff" ? -n : kind === "correction" ? n : n;
-    onAdjusted(delta, {
-      kind: kind === "receive" ? "Received" : "Adjusted",
-      detail: `${kind === "receive" ? `Goods-in: ${n} units` : kind === "writeoff" ? `Write-off: ${n} units` : `Count correction: +${n} units`}${note.trim() ? ` — ${note.trim()}` : ""}`,
-      by: "Amara O. (you)",
-      at: "just now",
-    });
-    setOpen(false);
-    setQty("10");
-    setNote("");
+    const delta = kind === "writeoff" ? -n : n;
+    setBusy(true);
     setError(null);
+    try {
+      const updated = await apiAdjustStock(sku, delta);
+      void updated;
+      onAdjusted(delta, {
+        kind: kind === "receive" ? "Received" : "Adjusted",
+        detail: `${kind === "receive" ? `Goods-in: ${n} units` : kind === "writeoff" ? `Write-off: ${n} units` : `Count correction: +${n} units`}${note.trim() ? ` — ${note.trim()}` : ""}`,
+        by: "Ops console (you)",
+        at: "just now",
+      });
+      setOpen(false);
+      setQty("10");
+      setNote("");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Adjustment failed — try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -83,8 +94,8 @@ export function AdjustStock({
             <button onClick={() => setOpen(false)} className="h-10 rounded-sm border border-zinc-300 px-4 text-[13.5px] font-semibold hover:border-zinc-950">
               Cancel
             </button>
-            <button onClick={apply} className="h-10 rounded-sm bg-zinc-950 px-4 text-[13.5px] font-semibold text-white hover:bg-zinc-800">
-              Apply adjustment
+            <button onClick={apply} disabled={busy} className="h-10 rounded-sm bg-zinc-950 px-4 text-[13.5px] font-semibold text-white hover:bg-zinc-800 disabled:opacity-60">
+              {busy ? "Applying…" : "Apply adjustment"}
             </button>
           </div>
         </div>

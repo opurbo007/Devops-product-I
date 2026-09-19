@@ -18,6 +18,8 @@ export type OrderItem = { name: string; qty: number; price: number };
 
 export type Order = {
   id: string;
+  /** Full backend UUID for detail links (display id stays short). */
+  backendId?: string;
   customer: string;
   email: string;
   town: string;

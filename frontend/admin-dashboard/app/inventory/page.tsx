@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Table, TableHead, TableHeaderRow, TableHeadCell, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dropdown } from "@/components/ui/dropdown";
-import { SKUS, GRADES, STOCK_FILTERS, type Grade, type StockFilter, type Sku } from "@/data/inventory";
+import { GRADES, STOCK_FILTERS, type Grade, type StockFilter, type Sku } from "@/data/inventory";
 import { coverOf, statusOf, totalOf, updatedLabel } from "@/lib/inventory";
+import { ApiError, apiListStock } from "@/lib/api";
+import { toSku } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
 const PAGE_SIZE = 10;
 
@@ -48,11 +51,35 @@ function SortHeader({
 }
 
 export default function InventoryPage() {
+  useRequireAdmin();
   const [query, setQuery] = useState("");
   const [stock, setStock] = useState<StockFilter>("");
   const [grade, setGrade] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "product", dir: "asc" });
   const [page, setPage] = useState(1);
+  const [live, setLive] = useState<Sku[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiListStock()
+      .then((rows) => {
+        if (!cancelled) {
+          setLive(rows.map(toSku));
+          setLoadError(null);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setLoadError(e instanceof ApiError ? e.message : "Could not load stock.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const skus = useMemo(() => live ?? [], [live]);
 
   const resetPage = () => setPage(1);
   const onSort = (k: SortKey) =>
@@ -60,7 +87,7 @@ export default function InventoryPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = SKUS.filter((s) => {
+    const list = skus.filter((s) => {
       if (q && ![s.sku, s.product, s.brand].some((f) => f.toLowerCase().includes(q))) return false;
       if (stock === "out" && statusOf(s) !== "Out of stock") return false;
       if (stock === "low" && statusOf(s) !== "Low") return false;
@@ -75,10 +102,10 @@ export default function InventoryPage() {
       if (sort.key === "total") return (totalOf(a) - totalOf(b)) * dir;
       return (a.updatedMin - b.updatedMin) * dir;
     });
-  }, [query, stock, grade, sort]);
+  }, [skus, query, stock, grade, sort]);
 
-  const outCount = SKUS.filter((s) => statusOf(s) === "Out of stock").length;
-  const lowCount = SKUS.filter((s) => statusOf(s) === "Low").length;
+  const outCount = skus.filter((s) => statusOf(s) === "Out of stock").length;
+  const lowCount = skus.filter((s) => statusOf(s) === "Low").length;
   const activeCount = (stock ? 1 : 0) + (grade ? 1 : 0) + (query.trim() ? 1 : 0);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -98,7 +125,9 @@ export default function InventoryPage() {
       title="Inventory"
       actions={
         <span className="text-[13px] tabular-nums text-zinc-500" aria-live="polite">
-          {outCount} out of stock · {lowCount} low · {filtered.length} of {SKUS.length} SKUs
+          {live === null && !loadError
+            ? "Loading…"
+            : `${outCount} out of stock · ${lowCount} low · ${filtered.length} of ${skus.length} SKUs`}
         </span>
       }
     >
@@ -157,7 +186,20 @@ export default function InventoryPage() {
             </TableHeaderRow>
           </TableHead>
           <TableBody>
-            {visible.length > 0 ? (
+            {loadError ? (
+              <tr>
+                <td colSpan={9} className="px-5 py-14 text-center">
+                  <p className="text-[15px] font-bold text-zinc-950">Couldn&apos;t reach the API</p>
+                  <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">{loadError}</p>
+                </td>
+              </tr>
+            ) : live === null ? (
+              <tr>
+                <td colSpan={9} className="px-5 py-14 text-center text-[13.5px] text-zinc-600">
+                  Loading stock…
+                </td>
+              </tr>
+            ) : visible.length > 0 ? (
               visible.map((s) => (
                 <TableRow key={s.sku}>
                   <TableCell className="whitespace-nowrap font-mono text-[12px] font-semibold text-zinc-950">{s.sku}</TableCell>
@@ -190,7 +232,7 @@ export default function InventoryPage() {
                 <td colSpan={9} className="px-5 py-14 text-center">
                   <p className="text-[15px] font-bold text-zinc-950">No SKUs match these filters</p>
                   <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">
-                    Try a different search term or clear the filters to see all {SKUS.length} SKUs.
+                    Try a different search term or clear the filters to see all {skus.length} SKUs.
                   </p>
                   <button
                     onClick={clearAll}

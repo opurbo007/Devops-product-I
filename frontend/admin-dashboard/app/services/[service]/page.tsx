@@ -1,23 +1,33 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { SERVICES, formatLag, getService } from "@/data/services";
+import ChaosPanel from "@/components/services/ChaosPanel";
+import { fetchServiceHealth, type DlqService, type HealthState } from "@/lib/api";
+import { toServiceHealth } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
-export function generateStaticParams() {
-  return SERVICES.map((s) => ({ service: s.slug }));
-}
+// Mock slug -> gateway health slug; chaos dropdown per service.
+const HEALTH_SLUG: Record<string, HealthState["slug"]> = {
+  order: "orders",
+  inventory: "inventory",
+  payment: "payments",
+  shipping: "shipping",
+  cart: "cart",
+  "notification-service": "notifications",
+};
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ service: string }>;
-}): Promise<Metadata> {
-  const { service } = await params;
-  const svc = getService(service);
-  return { title: svc ? `${svc.name} | Services | Volt Ops` : "Service | Volt Ops" };
-}
+const CHAOS_SERVICE: Record<string, DlqService> = {
+  order: "orders",
+  inventory: "inventory",
+  payment: "payments",
+  shipping: "shipping",
+  "notification-service": "notifications",
+};
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -64,10 +74,36 @@ function kindBadge(kind: string) {
   return <Badge variant="muted">config</Badge>;
 }
 
-export default async function ServiceDetailPage({ params }: { params: Promise<{ service: string }> }) {
-  const { service } = await params;
-  const svc = getService(service);
-  if (!svc) notFound();
+export default function ServiceDetailPage() {
+  useRequireAdmin();
+  const params = useParams<{ service: string }>();
+  const service = params.service;
+  const mock = getService(service);
+
+  const [live, setLive] = useState<HealthState | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const slug = HEALTH_SLUG[service];
+    if (!slug) return;
+    fetchServiceHealth(slug)
+      .then((h) => {
+        if (!cancelled) setLive(h);
+      })
+      .catch(() => {
+        if (!cancelled) setLive({ slug, ok: false, latencyMs: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [service]);
+
+  if (!mock) notFound();
+
+  // Live status + measured latency overlaid on the fleet row; the charts and
+  // replica tables remain demo telemetry.
+  const svc = toServiceHealth(HEALTH_SLUG[service] ?? service, live) ?? mock;
+  const chaosService = CHAOS_SERVICE[service];
 
   const metrics: [string, string][] = [
     ["CPU", `${svc.cpu}%`],
@@ -245,6 +281,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
               Inspect topic in event stream →
             </Link>
           </Panel>
+
+          {chaosService && <ChaosPanel service={chaosService} />}
 
           <Panel title="Other services">
             <ul className="space-y-2">

@@ -1,33 +1,72 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import SkuDetail from "@/components/inventory/SkuDetail";
-import { SKUS } from "@/data/inventory";
+import type { Sku } from "@/data/inventory";
+import type { Reservation } from "@/lib/api";
+import {
+  ApiError,
+  apiGetStock,
+  apiReleaseOrder,
+} from "@/lib/api";
+import { toSku } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
-export function generateStaticParams() {
-  return SKUS.map((s) => ({ sku: s.sku }));
-}
+export default function SkuPage() {
+  useRequireAdmin();
+  const params = useParams<{ sku: string }>();
+  const skuId = params.sku;
+  const [sku, setSku] = useState<Sku | null>(null);
+  const [reservations, setReservations] = useState<Reservation[] | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ sku: string }>;
-}): Promise<Metadata> {
-  const { sku } = await params;
-  return { title: `${sku} | Inventory | Volt Ops` };
-}
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await apiGetStock(skuId);
+        if (cancelled) return;
+        setSku(toSku(detail));
+        setReservations(detail.reservations);
+        setError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setError(
+          e instanceof ApiError && e.status === 404
+            ? `SKU ${skuId} not found.`
+            : e instanceof ApiError
+              ? e.message
+              : "Could not load the SKU.",
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [skuId, reloadToken]);
 
-export default async function SkuPage({ params }: { params: Promise<{ sku: string }> }) {
-  const { sku: skuId } = await params;
-  const sku = SKUS.find((s) => s.sku === skuId);
-  if (!sku) notFound();
+  const release = useCallback(async (orderId: string) => {
+    await apiReleaseOrder(orderId);
+    setReloadToken((t) => t + 1);
+  }, []);
 
   return (
     <AdminShell
-      crumbs={[{ label: "Catalogue" }, { label: "Inventory", href: "/inventory" }, { label: sku.sku }]}
-      title={sku.product}
+      crumbs={[{ label: "Catalogue" }, { label: "Inventory", href: "/inventory" }, { label: skuId }]}
+      title={sku?.product ?? skuId}
     >
-      <SkuDetail sku={sku} />
+      {error ? (
+        <p role="alert" className="max-w-2xl rounded-sm border border-[#b3261e] bg-red-50 px-4 py-3 text-[14px] text-[#8f1d17]">
+          {error}
+        </p>
+      ) : !sku ? (
+        <p className="text-[14px] text-zinc-600">Loading SKU…</p>
+      ) : (
+        <SkuDetail sku={sku} liveReservations={reservations} onRelease={release} />
+      )}
     </AdminShell>
   );
 }

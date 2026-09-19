@@ -3,23 +3,51 @@
 import { useState } from "react";
 import type { Order } from "@/data/orders";
 import { Dialog } from "@/components/ui/dialog";
+import { ApiError, apiRefundOrder } from "@/lib/api";
 
 function gbp(v: number) {
   return `£${v.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default function RefundDialog({ order, open, onClose }: { order: Order; open: boolean; onClose: () => void }) {
-  const [state, setState] = useState<"form" | "working" | "done">("form");
+export default function RefundDialog({
+  order,
+  open,
+  onClose,
+  onRefunded,
+}: {
+  order: Order;
+  open: boolean;
+  onClose: () => void;
+  onRefunded?: () => void;
+}) {
+  const [state, setState] = useState<"form" | "working" | "done" | "error">("form");
   const [reason, setReason] = useState("Customer request — 30-day returns");
+  const [error, setError] = useState<string | null>(null);
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (!order.backendId) {
+      setError("No backend order id — cannot refund demo rows.");
+      setState("error");
+      return;
+    }
     setState("working");
-    setTimeout(() => setState("done"), 1200);
+    setError(null);
+    try {
+      await apiRefundOrder(order.backendId);
+      setState("done");
+      onRefunded?.();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Refund failed — try again.");
+      setState("error");
+    }
   };
 
   const close = () => {
     onClose();
-    setTimeout(() => setState("form"), 200);
+    setTimeout(() => {
+      setState("form");
+      setError(null);
+    }, 200);
   };
 
   return (
@@ -59,6 +87,21 @@ export default function RefundDialog({ order, open, onClose }: { order: Order; o
           <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-950" />
           Contacting payment provider…
         </p>
+      )}
+      {state === "error" && (
+        <>
+          <p role="alert" className="rounded-sm border border-[#b3261e] bg-red-50 px-3 py-2.5 text-[13.5px] text-[#8f1d17]">
+            {error ?? "Refund failed."}
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button onClick={close} className="h-10 rounded-sm border border-zinc-300 px-4 text-[13.5px] font-semibold hover:border-zinc-950">
+              Close
+            </button>
+            <button onClick={confirm} className="h-10 rounded-sm bg-[#b3261e] px-4 text-[13.5px] font-semibold text-white hover:bg-[#8f1d17]">
+              Try again
+            </button>
+          </div>
+        </>
       )}
       {state === "done" && (
         <>

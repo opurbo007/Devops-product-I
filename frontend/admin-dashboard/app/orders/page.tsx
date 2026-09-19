@@ -10,13 +10,15 @@ import { Dropdown } from "@/components/ui/dropdown";
 import OrderSheet from "@/components/orders/OrderSheet";
 import { orderBadge, paymentBadge } from "@/components/orders/badges";
 import {
-  ORDERS,
   ORDER_STATUSES,
   PAYMENT_STATUSES,
   DATE_RANGES,
   type DateRange,
   type Order,
 } from "@/data/orders";
+import { ApiError, apiListOrders, apiListPayments } from "@/lib/api";
+import { toAdminOrder } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
 const PAGE_SIZE = 10;
 
@@ -43,50 +45,79 @@ function SkeletonRows() {
 }
 
 export default function OrdersPage() {
+  useRequireAdmin();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [searching, setSearching] = useState(false);
   const [status, setStatus] = useState("");
   const [payment, setPayment] = useState("");
   const [date, setDate] = useState<DateRange>("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Order | null>(null);
+  const [live, setLive] = useState<Order[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Live orders + payments (one payments call matched per order); filters
+  // stay client-side so the existing filter UI is unchanged.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [orders, payments] = await Promise.all([
+          apiListOrders(),
+          apiListPayments().catch(() => []),
+        ]);
+        if (cancelled) return;
+        const payByOrder = new Map(payments.map((p) => [p.orderId, p]));
+        setLive(orders.map((o) => toAdminOrder(o, payByOrder.get(o.id))));
+        setLoadError(null);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof ApiError ? e.message : "Could not load orders.",
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const orders = useMemo(() => live ?? [], [live]);
 
   useEffect(() => {
-    if (query === debounced) {
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
+    if (query === debounced) return;
     const t = setTimeout(() => setDebounced(query), 250);
     return () => clearTimeout(t);
   }, [query, debounced]);
+
+  const searching = query !== debounced;
 
   const resetPage = () => setPage(1);
 
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();
     const range = DATE_RANGES.find((r) => r.value === date);
-    return ORDERS.filter((o) => {
+    return orders.filter((o) => {
       if (q && ![o.id, o.customer, o.email, o.town].some((f) => f.toLowerCase().includes(q))) return false;
       if (status && o.status !== status) return false;
       if (payment && o.payment !== payment) return false;
       if (range && !range.test(o.ageH)) return false;
       return true;
     });
-  }, [debounced, status, payment, date]);
+  }, [orders, debounced, status, payment, date]);
 
   const statusCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const o of ORDERS) m.set(o.status, (m.get(o.status) ?? 0) + 1);
+    for (const o of orders) m.set(o.status, (m.get(o.status) ?? 0) + 1);
     return m;
-  }, []);
+  }, [orders]);
 
   const paymentCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const o of ORDERS) m.set(o.payment, (m.get(o.payment) ?? 0) + 1);
+    for (const o of orders) m.set(o.payment, (m.get(o.payment) ?? 0) + 1);
     return m;
-  }, []);
+  }, [orders]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -108,7 +139,7 @@ export default function OrdersPage() {
       title="Orders"
       actions={
         <span className="text-[13px] tabular-nums text-zinc-500" aria-live="polite">
-          {filtered.length} of {ORDERS.length} orders
+          {live === null ? "Loading…" : `${filtered.length} of ${orders.length} orders`}
         </span>
       }
     >
@@ -176,7 +207,14 @@ export default function OrdersPage() {
             </TableHeaderRow>
           </TableHead>
           <TableBody>
-            {searching ? (
+            {loadError ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-14 text-center">
+                  <p className="text-[15px] font-bold text-zinc-950">Couldn&apos;t reach the API</p>
+                  <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">{loadError}</p>
+                </td>
+              </tr>
+            ) : searching || live === null ? (
               <SkeletonRows />
             ) : visible.length > 0 ? (
               visible.map((o) => (
@@ -195,7 +233,7 @@ export default function OrdersPage() {
                   <TableCell className="whitespace-nowrap text-zinc-600">{o.created}</TableCell>
                   <TableCell>
                     <Link
-                      href={`/orders/${o.id}`}
+                      href={`/orders/${o.backendId ?? o.id}`}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded-sm border border-zinc-300 px-2.5 py-1 text-[12.5px] font-semibold text-zinc-800 hover:border-zinc-950 hover:text-zinc-950"
                     >
@@ -209,7 +247,7 @@ export default function OrdersPage() {
                 <td colSpan={8} className="px-5 py-14 text-center">
                   <p className="text-[15px] font-bold text-zinc-950">No orders match these filters</p>
                   <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">
-                    Try a different search term, widen the date range, or clear the filters to see all {ORDERS.length} orders.
+                    Try a different search term, widen the date range, or clear the filters to see all {orders.length} orders.
                   </p>
                   <button
                     onClick={clearAll}

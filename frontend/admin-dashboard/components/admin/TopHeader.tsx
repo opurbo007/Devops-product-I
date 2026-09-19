@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 
 const NOTIFICATIONS = [
   { title: "18 orders awaiting fulfilment", detail: "Oldest is 6h 12m — SLA 24h", tone: "red" as const },
@@ -78,42 +80,44 @@ function Notifications() {
 function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(() => setOpen(false));
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const name = user?.email.split("@")[0] ?? "Operator";
+  const initials = name.slice(0, 2).toUpperCase();
+
+  const signOut = () => {
+    setOpen(false);
+    logout();
+    router.replace("/login");
+  };
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Account menu for Amara Okafor"
+        aria-label={`Account menu for ${user?.email ?? "operator"}`}
         className="flex items-center gap-2.5 rounded-sm px-1.5 py-1 hover:bg-zinc-100"
       >
         <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-950 text-[12px] font-bold text-white">
-          AO
+          {initials}
         </span>
         <span className="hidden text-left leading-tight xl:block">
-          <span className="block text-[13px] font-semibold text-zinc-950">Amara Okafor</span>
-          <span className="block text-[11.5px] text-zinc-500">Operations lead</span>
+          <span className="block max-w-40 truncate text-[13px] font-semibold text-zinc-950">{user?.email ?? "Not signed in"}</span>
+          <span className="block text-[11.5px] text-zinc-500">Operations · {user?.role ?? "—"}</span>
         </span>
         <span aria-hidden="true" className="hidden text-[11px] text-zinc-400 sm:inline">▾</span>
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-56 rounded-sm border border-zinc-200 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
           <div className="border-b border-zinc-200 px-4 py-3">
-            <p className="text-[13.5px] font-semibold text-zinc-950">Amara Okafor</p>
-            <p className="text-[12.5px] text-zinc-500">amara@volt-electricals.co.uk</p>
+            <p className="truncate text-[13.5px] font-semibold text-zinc-950">{user?.email ?? "Not signed in"}</p>
             <p className="mt-1 inline-block bg-zinc-100 px-1.5 py-px text-[11px] font-bold uppercase tracking-wide text-zinc-600">
-              Admin · Full access
+              {user?.role ?? "—"} · Full access
             </p>
           </div>
-          <div className="py-1 text-[13.5px]">
-            {["My profile", "Preferences", "Keyboard shortcuts"].map((l) => (
-              <button key={l} onClick={() => setOpen(false)} className="block w-full px-4 py-2 text-left text-zinc-800 hover:bg-zinc-50">
-                {l}
-              </button>
-            ))}
-          </div>
           <div className="border-t border-zinc-200 py-1">
-            <button onClick={() => setOpen(false)} className="block w-full px-4 py-2 text-left text-[13.5px] font-semibold text-[#b3261e] hover:bg-zinc-50">
+            <button onClick={signOut} className="block w-full px-4 py-2 text-left text-[13.5px] font-semibold text-[#b3261e] hover:bg-zinc-50">
               Sign out
             </button>
           </div>
@@ -158,7 +162,7 @@ export function TopHeader({ onMenu }: { onMenu: () => void }) {
 
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <a
-          href="/"
+          href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000"}
           className="hidden h-9 items-center rounded-sm border border-zinc-200 px-3 text-[13px] font-semibold text-zinc-700 hover:border-zinc-400 hover:text-zinc-950 sm:inline-flex"
         >
           View storefront

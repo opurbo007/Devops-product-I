@@ -5,11 +5,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { AdjustStock, RaisePO } from "./StockActions";
 import type { Sku } from "@/data/inventory";
+import type { Reservation } from "@/lib/api";
 import {
   coverOf,
   eventsFor,
   reservationsFor,
-  statusOf,
   totalOf,
   type StockEvent,
 } from "@/lib/inventory";
@@ -29,13 +29,36 @@ function eventDot(kind: StockEvent["kind"]) {
   return "bg-zinc-300";
 }
 
-export default function SkuDetail({ sku }: { sku: Sku }) {
+export default function SkuDetail({
+  sku,
+  liveReservations,
+  onRelease,
+}: {
+  sku: Sku;
+  /** Live active reservations; when provided they replace the demo generator. */
+  liveReservations?: Reservation[];
+  onRelease?: (orderId: string) => Promise<void>;
+}) {
   const [available, setAvailable] = useState(sku.available);
   const [extraEvents, setExtraEvents] = useState<StockEvent[]>([]);
+  const [releasing, setReleasing] = useState<string | null>(null);
   const events = [...extraEvents, ...eventsFor(sku)];
-  const reservations = reservationsFor({ ...sku, available });
+  const mockReservations = reservationsFor({ ...sku, available });
+  const usingLive = liveReservations !== undefined;
+  const reservations = mockReservations;
   const total = available + sku.reserved;
   const needsPO = available <= sku.reorderPoint;
+
+  const release = async (orderId: string) => {
+    if (!onRelease || releasing) return;
+    if (!window.confirm(`Release the reservation for order ${orderId.slice(0, 8)}? Stock returns to sellable.`)) return;
+    setReleasing(orderId);
+    try {
+      await onRelease(orderId);
+    } finally {
+      setReleasing(null);
+    }
+  };
 
   return (
     <div>
@@ -69,9 +92,54 @@ export default function SkuDetail({ sku }: { sku: Sku }) {
           {/* Active reservations */}
           <section className="overflow-hidden rounded-sm border border-zinc-200 bg-white">
             <h2 className="border-b border-zinc-200 px-4 py-2.5 text-[13px] font-bold text-zinc-950 sm:px-5">
-              Active reservations ({reservations.reduce((n, r) => n + r.qty, 0)} units)
+              Active reservations ({usingLive && liveReservations
+                ? liveReservations.reduce((n, r) => n + r.quantity, 0)
+                : reservations.reduce((n, r) => n + r.qty, 0)} units)
             </h2>
-            {reservations.length > 0 ? (
+            {usingLive && liveReservations ? (
+              liveReservations.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left text-[13px]">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-[11.5px] uppercase tracking-[0.08em] text-zinc-500">
+                        <th className="px-4 py-2.5 font-semibold sm:px-5">Order</th>
+                        <th className="px-4 py-2.5 font-semibold">Qty</th>
+                        <th className="px-4 py-2.5 font-semibold">Reserved</th>
+                        <th className="px-4 py-2.5 font-semibold sm:px-5">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {liveReservations.map((r) => (
+                        <tr key={r.id} className="hover:bg-zinc-50">
+                          <td className="px-4 py-2.5 sm:px-5">
+                            <Link href={`/orders/${r.orderId}`} className="font-mono text-[12.5px] font-semibold text-zinc-950 hover:underline">
+                              {r.orderId.slice(0, 8).toUpperCase()}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2.5 tabular-nums">{r.quantity}</td>
+                          <td className="px-4 py-2.5 text-zinc-600">{new Date(r.createdAt).toLocaleString("en-GB")}</td>
+                          <td className="px-4 py-2.5 sm:px-5">
+                            {onRelease && (
+                              <button
+                                onClick={() => void release(r.orderId)}
+                                disabled={releasing === r.orderId}
+                                className="rounded-sm border border-[#b3261e] px-2.5 py-1 text-[12.5px] font-semibold text-[#8f1d17] hover:bg-red-50 disabled:opacity-60"
+                              >
+                                {releasing === r.orderId ? "Releasing…" : "Release"}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="px-4 py-5 text-[13px] text-zinc-600 sm:px-5">
+                  No active reservations — {available > 0 ? `all ${available} units are sellable.` : "nothing to reserve."}
+                </p>
+              )
+            ) : reservations.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-left text-[13px]">
                   <thead>

@@ -1,8 +1,24 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Table, TableHead, TableHeaderRow, TableHeadCell, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { SERVICES, formatLag, type ServiceStatus } from "@/data/services";
+import { SERVICES, formatLag, type ServiceHealth, type ServiceStatus } from "@/data/services";
+import { fetchServiceHealth, type HealthState } from "@/lib/api";
+import { toServiceHealth } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
+
+// Gateway path segment per mock slug.
+const HEALTH_SLUG: Record<string, HealthState["slug"]> = {
+  order: "orders",
+  inventory: "inventory",
+  payment: "payments",
+  shipping: "shipping",
+  cart: "cart",
+  "notification-service": "notifications",
+};
 
 function statusBadge(s: ServiceStatus) {
   if (s === "Healthy") return <Badge variant="success">Healthy</Badge>;
@@ -23,14 +39,41 @@ function bar(value: number, warnAt = 70, critAt = 85) {
 }
 
 export default function ServicesPage() {
-  const healthy = SERVICES.filter((s) => s.status === "Healthy").length;
-  const degraded = SERVICES.filter((s) => s.status === "Degraded").length;
-  const down = SERVICES.filter((s) => s.status === "Down").length;
-  const totalReplicas = SERVICES.reduce((n, s) => n + s.replicas, 0);
-  const worstLag = Math.max(...SERVICES.map((s) => s.consumerLagSec));
-  const worstLagSvc = SERVICES.find((s) => s.consumerLagSec === worstLag);
-  const worstErr = Math.max(...SERVICES.map((s) => s.errorRate));
-  const worstErrSvc = SERVICES.find((s) => s.errorRate === worstErr);
+  useRequireAdmin();
+  const [live, setLive] = useState<Record<string, HealthState>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled(
+      SERVICES.map((s) =>
+        fetchServiceHealth(HEALTH_SLUG[s.slug] ?? "orders").then((h) => ({ slug: s.slug, h })),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const next: Record<string, HealthState> = {};
+      for (const r of results) {
+        if (r.status === "fulfilled") next[r.value.slug] = r.value.h;
+      }
+      setLive(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Live status + measured latency overlaid on the fleet rows.
+  const rows: ServiceHealth[] = SERVICES.map(
+    (s) => toServiceHealth(HEALTH_SLUG[s.slug] ?? s.slug, live[s.slug] ?? null) ?? s,
+  );
+
+  const healthy = rows.filter((s) => s.status === "Healthy").length;
+  const degraded = rows.filter((s) => s.status === "Degraded").length;
+  const down = rows.filter((s) => s.status === "Down").length;
+  const totalReplicas = rows.reduce((n, s) => n + s.replicas, 0);
+  const worstLag = Math.max(...rows.map((s) => s.consumerLagSec));
+  const worstLagSvc = rows.find((s) => s.consumerLagSec === worstLag);
+  const worstErr = Math.max(...rows.map((s) => s.errorRate));
+  const worstErrSvc = rows.find((s) => s.errorRate === worstErr);
 
   return (
     <AdminShell
@@ -45,7 +88,7 @@ export default function ServicesPage() {
       {/* Summary strip */}
       <dl className="mb-4 grid grid-cols-2 overflow-hidden rounded-sm border border-zinc-200 bg-white md:grid-cols-4">
         {[
-          { label: "Fleet status", value: `${healthy}/6 healthy`, note: degraded > 0 ? `${degraded} degraded — see inventory, notification` : "all nominal" },
+          { label: "Fleet status", value: `${healthy}/6 healthy`, note: degraded > 0 ? `${degraded} degraded` : down > 0 ? `${down} down` : "all nominal" },
           { label: "Worst consumer lag", value: formatLag(worstLag), note: `${worstLagSvc?.consumerGroup} · ${worstLagSvc?.name}` },
           { label: "Highest error rate", value: `${worstErr.toFixed(2)}%`, note: `${worstErrSvc?.name} · 1h window` },
           { label: "Active replicas", value: String(totalReplicas), note: "across eu-west-2a/b/c" },
@@ -64,7 +107,7 @@ export default function ServicesPage() {
       <div className="overflow-hidden rounded-sm border border-zinc-200 bg-white">
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5 sm:px-5">
           <p className="text-[12.5px] text-zinc-500">
-            Production · eu-west-2 · scraped 30s ago
+            Status is live from each service /health · telemetry rows are demo data
           </p>
           <p className="hidden font-mono text-[12px] text-zinc-400 sm:block">prometheus · kafka · k8s</p>
         </div>
@@ -83,7 +126,7 @@ export default function ServicesPage() {
             </TableHeaderRow>
           </TableHead>
           <TableBody>
-            {SERVICES.map((s) => (
+            {rows.map((s) => (
               <TableRow key={s.slug}>
                 <TableCell>
                   <Link href={`/services/${s.slug}`} className="block font-medium text-zinc-950 hover:underline">

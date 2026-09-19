@@ -10,7 +10,7 @@ export type NavSection = {
   items: NavItem[];
 };
 
-/** Mirrors the services/ directory: order, payment, inventory, notification, shipping, cart-recommendation. */
+/** Live sections only — catalogue, customers and system pages have no backend yet. */
 export const NAV: NavSection[] = [
   {
     title: "Overview",
@@ -19,47 +19,26 @@ export const NAV: NavSection[] = [
   {
     title: "Sell",
     items: [
-      { label: "Orders", href: "/orders", badge: "18", badgeTone: "red" },
+      { label: "Orders", href: "/orders" },
       { label: "Payments", href: "/payments" },
-      { label: "Refunds", href: "/refunds", badge: "4", badgeTone: "amber" },
+      { label: "Refunds", href: "/payments?status=refunded" },
     ],
   },
   {
     title: "Catalogue",
-    items: [
-      { label: "Products", href: "/products" },
-      { label: "Inventory", href: "/inventory", badge: "7", badgeTone: "amber" },
-      { label: "Promotions", href: "/promotions" },
-    ],
+    items: [{ label: "Inventory", href: "/inventory" }],
   },
   {
     title: "Fulfilment",
-    items: [
-      { label: "Shipments", href: "/shipments" },
-      { label: "Returns", href: "/returns" },
-    ],
-  },
-  {
-    title: "Customers",
-    items: [
-      { label: "Customers", href: "/customers" },
-      { label: "Reviews & Q&A", href: "/reviews" },
-    ],
+    items: [{ label: "Shipments", href: "/shipments" }],
   },
   {
     title: "Platform",
     items: [
       { label: "Events", href: "/events" },
+      { label: "Dead letters", href: "/events/dlq" },
       { label: "Services", href: "/services" },
-      { label: "API keys", href: "/api-keys" },
-    ],
-  },
-  {
-    title: "System",
-    items: [
-      { label: "Users & roles", href: "/users" },
-      { label: "Audit log", href: "/audit" },
-      { label: "Settings", href: "/settings" },
+      { label: "Chaos Lab", href: "/chaos" },
     ],
   },
 ];

@@ -11,6 +11,8 @@ export type DlqEntry = StreamEvent & {
   resolvedAt: string | null;
   resolvedBy: string | null;
   resolveNote: string | null;
+  /** Full backend order UUID for detail links (display order stays short). */
+  orderBackendId?: string | null;
 };
 
 export const FAILURE_TYPES = [

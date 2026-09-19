@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Table, TableHead, TableHeaderRow, TableHeadCell, TableBody, TableRow, TableCell } from "@/components/ui/table";
@@ -10,10 +10,19 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Dialog } from "@/components/ui/dialog";
 import EventSheet from "@/components/events/EventSheet";
 import { TOPICS, SERVICES, type StreamEvent } from "@/lib/events";
-import { FAILURE_TYPES, ageLabel, seedDlq, type DlqEntry } from "@/lib/dlq";
+import { FAILURE_TYPES, ageLabel, type DlqEntry } from "@/lib/dlq";
+import {
+  ApiError,
+  apiPeekDlq,
+  apiReplayDlq,
+  type DlqService,
+} from "@/lib/api";
+import { toDlqEntry } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
 function shortId(e: StreamEvent): string {
-  return `EV-${e.offset.toString(36).toUpperCase()}`;
+  if (e.offset > 0) return `EV-${e.offset.toString(36).toUpperCase()}`;
+  return `EV-${e.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 }
 
 function dlqBadge(s: DlqEntry["dlqStatus"]) {
@@ -73,8 +82,22 @@ function ResolveDialog({
   );
 }
 
+const DLQ_SERVICES: DlqService[] = [
+  "orders",
+  "inventory",
+  "shipping",
+  "payments",
+  "notifications",
+];
+
 export default function DlqPage() {
-  const [entries, setEntries] = useState<DlqEntry[]>(() => seedDlq());
+  useRequireAdmin();
+  const [entries, setEntries] = useState<DlqEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
+  // Replay needs (service, dlqTopic) per entry — not part of the UI type.
+  const meta = useRef(new Map<string, { service: DlqService; dlqTopic: string }>());
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("");
   const [service, setService] = useState("");
@@ -83,21 +106,64 @@ export default function DlqPage() {
   const [selected, setSelected] = useState<DlqEntry | null>(null);
   const [resolving, setResolving] = useState<DlqEntry | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.allSettled(
+          DLQ_SERVICES.map((s) => apiPeekDlq(s)),
+        );
+        if (cancelled) return;
+        const all: DlqEntry[] = [];
+        results.forEach((r, i) => {
+          if (r.status !== "fulfilled") return;
+          for (const m of r.value) {
+            const entry = toDlqEntry(m);
+            meta.current.set(entry.id, {
+              service: DLQ_SERVICES[i] as DlqService,
+              dlqTopic: m.dlqTopic,
+            });
+            all.push(entry);
+          }
+        });
+        all.sort((a, b) => b.epoch - a.epoch);
+        setEntries(all);
+        setLoadError(null);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof ApiError ? e.message : "Could not load the DLQ.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const patch = (id: string, p: Partial<DlqEntry>) =>
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...p } : e)));
 
-  const replay = (entry: DlqEntry) => {
+  const replay = async (entry: DlqEntry) => {
+    const m = meta.current.get(entry.id);
+    if (!m) return;
     patch(entry.id, { dlqStatus: "Replaying" });
-    setTimeout(() => {
+    setReplayError(null);
+    try {
+      const { replayed } = await apiReplayDlq(m.service, entry.topic.endsWith(".DLQ") ? entry.topic : m.dlqTopic);
       patch(entry.id, {
         dlqStatus: "Resolved",
         status: "Delivered",
         attempts: entry.attempts + 1,
         resolvedAt: new Date().toISOString().slice(11, 19),
-        resolvedBy: "Amara O. (you)",
-        resolveNote: `Replayed manually — delivered on attempt ${entry.attempts + 1}.`,
+        resolvedBy: "Ops console (you)",
+        resolveNote: `Replayed manually — ${replayed} message(s) requeued.`,
       });
-    }, 1400);
+    } catch (e) {
+      patch(entry.id, { dlqStatus: "Open" });
+      setReplayError(e instanceof ApiError ? e.message : "Replay failed.");
+    }
   };
 
   const filtered = useMemo(() => {
@@ -112,8 +178,11 @@ export default function DlqPage() {
     });
   }, [entries, query, topic, service, failure, status]);
 
-  const open = entries.filter((e) => e.dlqStatus === "Open");
-  const resolved = entries.filter((e) => e.dlqStatus === "Resolved");
+  const open = useMemo(() => entries.filter((e) => e.dlqStatus === "Open"), [entries]);
+  const resolved = useMemo(
+    () => entries.filter((e) => e.dlqStatus === "Resolved"),
+    [entries],
+  );
   const oldest = open.reduce((m, e) => Math.max(m, e.ageMin), 0);
   const worstTopic = useMemo(() => {
     const counts = new Map<string, number>();
@@ -196,6 +265,12 @@ export default function DlqPage() {
         </div>
       </div>
 
+      {replayError && (
+        <p role="alert" className="mb-4 rounded-sm border border-[#b3261e] bg-red-50 px-4 py-2.5 text-[13px] text-[#8f1d17]">
+          Replay failed: {replayError}
+        </p>
+      )}
+
       {/* Table */}
       <div className="overflow-hidden rounded-sm border border-zinc-200 bg-white">
         <Table className="min-w-[1180px]">
@@ -214,7 +289,20 @@ export default function DlqPage() {
             </TableHeaderRow>
           </TableHead>
           <TableBody>
-            {filtered.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={10} className="px-5 py-14 text-center text-[13.5px] text-zinc-600">
+                  Loading dead-letter queue…
+                </td>
+              </tr>
+            ) : loadError ? (
+              <tr>
+                <td colSpan={10} className="px-5 py-14 text-center">
+                  <p className="text-[15px] font-bold text-zinc-950">Couldn&apos;t reach the API</p>
+                  <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">{loadError}</p>
+                </td>
+              </tr>
+            ) : filtered.length > 0 ? (
               filtered.map((e) => {
                 const done = e.dlqStatus === "Resolved";
                 return (
@@ -223,7 +311,7 @@ export default function DlqPage() {
                     <TableCell className={`whitespace-nowrap font-mono text-[12.5px] font-semibold ${done ? "text-zinc-500" : "text-zinc-950"}`}>{shortId(e)}</TableCell>
                     <TableCell>
                       {e.order ? (
-                        <Link href={`/orders/${e.order}`} className={`font-mono text-[12.5px] font-semibold hover:underline ${done ? "text-zinc-500" : "text-zinc-950"}`}>
+                        <Link href={`/orders/${e.orderBackendId ?? e.order}`} className={`font-mono text-[12.5px] font-semibold hover:underline ${done ? "text-zinc-500" : "text-zinc-950"}`}>
                           {e.order}
                         </Link>
                       ) : (

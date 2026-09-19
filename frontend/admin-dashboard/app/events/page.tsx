@@ -12,10 +12,11 @@ import {
   TOPICS,
   SERVICES,
   TYPES_BY_TOPIC,
-  nextLiveEvent,
-  seedEvents,
   type StreamEvent,
 } from "@/lib/events";
+import { ApiError, apiListNotifications } from "@/lib/api";
+import { notificationToEvent } from "@/lib/backend";
+import { useRequireAdmin } from "@/lib/auth";
 
 const BUFFER_MAX = 120;
 const ALL_TYPES = Object.values(TYPES_BY_TOPIC).flat();
@@ -27,8 +28,13 @@ function statusBadge(s: StreamEvent["status"]) {
 }
 
 export default function EventsPage() {
-  const [buffer, setBuffer] = useState<StreamEvent[]>(() => seedEvents());
+  useRequireAdmin();
+  // Live domain-event receipts (one row per sent notification) polled from
+  // the backend; newest first, capped buffer — same shape as the old sim.
+  const [buffer, setBuffer] = useState<StreamEvent[]>([]);
   const [live, setLive] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("");
   const [service, setService] = useState("");
@@ -38,10 +44,32 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (!live) return;
-    const t = setInterval(() => {
-      setBuffer((prev) => [nextLiveEvent(), ...prev].slice(0, BUFFER_MAX));
-    }, 4000);
-    return () => clearInterval(t);
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const notes = await apiListNotifications(undefined, BUFFER_MAX);
+        if (cancelled) return;
+        const rows = notes.map(notificationToEvent);
+        setBuffer((prev) => {
+          const seen = new Set(rows.map((r) => r.id));
+          const kept = prev.filter((e) => !seen.has(e.id));
+          return [...rows, ...kept].slice(0, BUFFER_MAX);
+        });
+        setLoadError(null);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof ApiError ? e.message : "Event stream unavailable.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void poll();
+    const t = setInterval(() => void poll(), 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
   }, [live]);
 
   const filtered = useMemo(() => {
@@ -178,7 +206,20 @@ export default function EventsPage() {
             </TableHeaderRow>
           </TableHead>
           <TableBody>
-            {filtered.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-14 text-center text-[13.5px] text-zinc-600">
+                  Connecting to the event stream…
+                </td>
+              </tr>
+            ) : loadError && buffer.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-14 text-center">
+                  <p className="text-[15px] font-bold text-zinc-950">Couldn&apos;t reach the API</p>
+                  <p className="mx-auto mt-1 max-w-sm text-[13px] text-zinc-600">{loadError}</p>
+                </td>
+              </tr>
+            ) : filtered.length > 0 ? (
               filtered.slice(0, 60).map((e) => (
                 <TableRow key={e.id} className="cursor-pointer" onClick={() => setSelected(e)}>
                   <TableCell className="whitespace-nowrap font-mono text-[12px] tabular-nums text-zinc-600">{e.timestamp}</TableCell>
