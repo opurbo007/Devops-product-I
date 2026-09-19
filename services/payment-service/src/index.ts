@@ -1,5 +1,15 @@
+import dotenv from "dotenv";
+import { createApp } from "./server.js";
 import { startConsumer } from "./consumers/inventoryReserved.js";
 import { publishOutboxEvents } from "./outbox/publisher.js";
+
+dotenv.config();
+
+const port = Number(process.env.PORT ?? 3003);
+const app = createApp();
+app.listen(port, () => {
+  console.log(`payment-service listening on port ${port}`);
+});
 
 let running = true;
 process.on("SIGINT", () => (running = false));

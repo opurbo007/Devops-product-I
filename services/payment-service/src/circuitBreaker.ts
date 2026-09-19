@@ -19,6 +19,24 @@ export class CircuitBreaker {
     return this.state;
   }
 
+  getStats(): {
+    state: string;
+    failures: number;
+    failureThreshold: number;
+    timeoutMs: number;
+    resetMs: number;
+    openedAt: string | null;
+  } {
+    return {
+      state: this.state,
+      failures: this.failures,
+      failureThreshold: this.options.failureThreshold,
+      timeoutMs: this.options.timeoutMs,
+      resetMs: this.options.resetMs,
+      openedAt: this.openedAt ? new Date(this.openedAt).toISOString() : null,
+    };
+  }
+
   async execute<T>(
     fn: () => Promise<T>,
   ): Promise<T> {
