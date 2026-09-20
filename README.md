@@ -40,6 +40,17 @@ Each service has its own Postgres DB; the shared Prisma schema (`shared/prisma`)
 is migrated into every DB. `DATABASE_URL` is auto-synthesized from the
 service `.env` (`POSTGRES_DB`, etc.), so no extra env setup is needed:
 
+```powershell
+cd services/order-service; npm install; npm run db:migrate; cd ../..
+cd services/inventory-service; npm install; npm run db:migrate; npm run seed; cd ../..
+cd services/shipping-service; npm install; npm run db:migrate; cd ../..
+cd services/payment-service; npm install; npm run db:migrate; cd ../..
+cd services/notification-service; npm install; npm run db:migrate; cd ../..
+cd services/cart-recommendation-service; npm install; npm run db:migrate; cd ../..
+```
+
+Bash / zsh equivalent (replace `;` with `&&` if you want stop-on-error):
+
 ```sh
 cd services/order-service && npm install && npm run db:migrate && cd ../..
 cd services/inventory-service && npm install && npm run db:migrate && npm run seed && cd ../..
