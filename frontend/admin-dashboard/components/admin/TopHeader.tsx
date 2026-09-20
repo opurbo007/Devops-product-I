@@ -162,7 +162,7 @@ export function TopHeader({ onMenu }: { onMenu: () => void }) {
 
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <a
-          href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000"}
+          href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3006"}
           className="hidden h-9 items-center rounded-sm border border-zinc-200 px-3 text-[13px] font-semibold text-zinc-700 hover:border-zinc-400 hover:text-zinc-950 sm:inline-flex"
         >
           View storefront
