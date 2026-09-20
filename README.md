@@ -8,7 +8,7 @@ saga orchestration with compensation, and K8s-ready infra.
 
 | Service | Port | Role |
 |---|---|---|
-| api-gateway | 8080 | JWT auth, per-service proxy, Redis rate limiting |
+| api-gateway | 8081 | JWT auth, per-service proxy, Redis rate limiting |
 | order-service | 3000 | Saga orchestrator, order state + cancel |
 | inventory-service | 3001 | Stock reserve/release, compensation |
 | shipping-service | 3002 | Fulfillment, tracking |
@@ -32,7 +32,13 @@ cp .env.example .env   # set POSTGRES_PASSWORD
 docker compose up --build
 ```
 
-Ports: gateway `8080`, services `3000-3005`, Prometheus `9090`, Grafana `3100`.
+Ports: gateway `8081`, services `3000-3005`, Prometheus `9090`, Grafana `3100`.
+
+> Windows note: port `8080` is often taken by EDB Postgres' bundled Apache
+> (`httpd.exe`), which returns an HTML `404 Not Found` for unknown paths. This
+> repo therefore runs the gateway on **`8081`** (`PORT=8081` in
+> `api-gateway/.env`, `GATEWAY_PORT=8081` in `infrastructure/.env`). If you see
+> that HTML 404 on `:8080`, you're hitting Apache, not the gateway.
 
 ### 2. Databases — one migrate per service DB (from the repo root)
 
@@ -70,8 +76,9 @@ npm run seed            # demo SKUs
 
 ### 3. Frontend — storefront + admin dashboard (2 terminals)
 
-Both are Next.js apps talking to the gateway at `http://localhost:8080`
-(see `frontend/*/.env.example` → `NEXT_PUBLIC_API_URL`). They currently run
+Both are Next.js apps talking to the gateway at `http://localhost:8081`
+(copy `frontend/*/.env.example` to `.env.local` and set `NEXT_PUBLIC_API_URL`
+— already done if you cloned after this change). They currently run
 against mock data, pending real API integration. Default `next dev` port
 `3000` clashes with `order-service`, so use `3006`/`3007`:
 
@@ -88,7 +95,7 @@ npm run dev -- --port 3007   # http://localhost:3007/chaos for Chaos Lab
 ```
 
 Demo saga: `POST /auth/register` → `POST /auth/login` → `POST /api/orders`
-at `localhost:8080`, then poll `GET /api/orders/:id` —
+at `localhost:8081`, then poll `GET /api/orders/:id` —
 `pending → reserved → paid → shipped`.
 
 ## Ops
