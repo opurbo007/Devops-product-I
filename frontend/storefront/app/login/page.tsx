@@ -37,9 +37,17 @@ function LoginForm() {
       }
       router.replace(next);
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Something went wrong — try again.",
-      );
+      // Retry-after-failure lands here as 409 when the first attempt actually
+      // created the account (double submit, timeout retry). Guide the user to
+      // sign in instead of leaving them stuck on a dead-end error.
+      if (err instanceof ApiError && err.status === 409 && mode === "register") {
+        setMode("login");
+        setError("Account already exists — please sign in.");
+      } else {
+        setError(
+          err instanceof ApiError ? err.message : "Something went wrong — try again.",
+        );
+      }
     } finally {
       setBusy(false);
     }

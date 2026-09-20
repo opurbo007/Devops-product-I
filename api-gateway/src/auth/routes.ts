@@ -54,7 +54,7 @@ router.post("/register", async (req: Request, res: Response) => {
       e instanceof Prisma.PrismaClientKnownRequestError &&
       e.code === "P2002"
     ) {
-      res.status(409).json({ error: { message: "Email already registered" } });
+      res.status(409).json({ error: { message: "Email already registered. Please sign in instead." } });
       return;
     }
     throw e;
