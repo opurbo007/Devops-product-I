@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "tsx --watch src/index.ts",
     "start": "tsx src/index.ts",
-    "prisma:generate": "prisma generate --schema ../../shared/prisma/prisma/schema.prisma",
-    "db:migrate": "prisma migrate deploy --schema ../../shared/prisma/prisma/schema.prisma",
-    "db:push": "prisma db push --schema ../../shared/prisma/prisma/schema.prisma",
+    "prisma:generate": "node ../../shared/prisma/scripts/prisma-with-url.mjs generate --schema ../../shared/prisma/prisma/schema.prisma",
+    "db:migrate": "node ../../shared/prisma/scripts/prisma-with-url.mjs migrate deploy --schema ../../shared/prisma/prisma/schema.prisma",
+    "db:push": "node ../../shared/prisma/scripts/prisma-with-url.mjs db push --schema ../../shared/prisma/prisma/schema.prisma",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
