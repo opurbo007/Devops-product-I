@@ -127,6 +127,16 @@ async function tryRefresh(): Promise<string | null> {
   }
 }
 
+// Re-issue an in-memory access token from the httpOnly refresh cookie.
+// The access token lives only in module memory, so a page reload wipes it
+// while the cookie survives — without this, every post-reload API call goes
+// out with no Authorization header ("Missing bearer token").
+export async function restoreSession(): Promise<string | null> {
+  const fresh = await tryRefresh();
+  if (fresh) accessToken = fresh;
+  return fresh;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},

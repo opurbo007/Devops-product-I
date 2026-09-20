@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import {
   apiLogin,
   decodeRole,
+  restoreSession,
   setAccessToken,
   type AuthUser,
 } from "./api";
@@ -44,9 +45,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Intentional hydration gate: localStorage is unavailable during SSR, so
     // the persisted session applies on mount to avoid a hydration mismatch.
+    // The access token itself lives only in memory, so re-issue it from the
+    // refresh cookie — otherwise post-reload API calls carry no bearer token.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUser(loadUser());
-    setReady(true);
+    const persisted = loadUser();
+    if (!persisted) {
+      setReady(true);
+    } else {
+      restoreSession().then((fresh) => {
+        if (fresh) {
+          setAccessToken(fresh);
+          setUser(persisted);
+        } else {
+          try {
+            localStorage.removeItem(USER_KEY);
+          } catch {
+            /* ignore */
+          }
+          setUser(null);
+        }
+        setReady(true);
+      });
+    }
     const onExpired = () => {
       setAccessToken(null);
       setUser(null);
