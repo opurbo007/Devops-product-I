@@ -24,9 +24,13 @@ Shared packages: `shared/prisma` (single Prisma schema + migrations),
 
 ## Quickstart (full stack with frontend)
 
-> Windows one-click: run `start-all.bat` from the repo root — it brings up
-> infra, runs all migrations (+ inventory seed), and opens every backend and
-> frontend in its own window. Steps below are the manual equivalent.
+> Windows one-click (opens everything as tabs in Windows Terminal):
+> - `start-all.bat` — first run / full reset: infra + all migrations (+ seed)
+>   + every backend and frontend.
+> - `start-services.bat` — daily start: just the 9 servers, no Docker,
+>   no migrations (infra must already be up via
+>   `cd infrastructure` + `docker compose up -d`).
+> Steps below are the manual equivalent.
 
 ### 1. Backend — Postgres + Kafka + Redis + 6 services + gateway + observability
 
