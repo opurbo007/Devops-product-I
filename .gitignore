@@ -14,7 +14,6 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 .pnpm-store/
-package-lock.json
 # Uncomment if you want to ignore lockfiles (not recommended for apps):
 # package-lock.json
 # yarn.lock
