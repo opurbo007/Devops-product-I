@@ -340,7 +340,16 @@ export function apiGetCircuit(
   return apiFetch(`/api/${service}/admin/circuit`);
 }
 
-// --- DLQ ops (per service) ---
+// Admin-path builder: every service has a dedicated gateway mount that strips
+// its prefix ("/api/<svc>" -> "/"), EXCEPT orders, which rides the legacy
+// "/api" catch-all (strips only "/api"). So /api/orders/admin/... would reach
+// order-service as /orders/admin/... (404) — orders admin calls go to
+// /api/admin/... instead.
+function svcAdmin(service: DlqService, rest: string): string {
+  return service === "orders"
+    ? `/api/admin/${rest}`
+    : `/api/${service}/admin/${rest}`;
+}
 
 export type DlqService =
   | "orders"
@@ -354,7 +363,7 @@ export function apiPeekDlq(
   limit = 100,
 ): Promise<DlqMessage[]> {
   return apiFetch<DlqMessage[]>(
-    `/api/${service}/admin/dlq?limit=${limit}`,
+    `${svcAdmin(service, "dlq")}?limit=${limit}`,
   );
 }
 
@@ -363,7 +372,7 @@ export function apiReplayDlq(
   topic: string,
   limit = 100,
 ): Promise<{ topic: string; replayed: number }> {
-  return apiFetch(`/api/${service}/admin/dlq/replay`, {
+  return apiFetch(svcAdmin(service, "dlq/replay"), {
     method: "POST",
     body: JSON.stringify({ topic, limit }),
   });
@@ -374,7 +383,7 @@ export function apiReplayDlq(
 export function apiGetChaos(
   service: DlqService,
 ): Promise<{ flags: Record<string, string> }> {
-  return apiFetch(`/api/${service}/admin/chaos`);
+  return apiFetch(svcAdmin(service, "chaos"));
 }
 
 export function apiSetChaos(
@@ -382,7 +391,7 @@ export function apiSetChaos(
   flag: string,
   value: string,
 ): Promise<{ flags: Record<string, string> }> {
-  return apiFetch(`/api/${service}/admin/chaos`, {
+  return apiFetch(svcAdmin(service, "chaos"), {
     method: "POST",
     body: JSON.stringify({ flag, value }),
   });

@@ -54,7 +54,9 @@ export function createApp(): express.Express {
 
   app.use(validateInternalAuth);
 
-  app.get("/notifications", async (req, res, next) => {
+  // Collection root alias: the gateway strips its "/api/notifications" mount
+  // prefix, so the dashboard's GET /api/notifications arrives here as "/".
+  app.get(["/", "/notifications"], async (req, res, next) => {
     try {
       const filter: { orderId?: string; template?: string; take?: number } = {};
       if (typeof req.query.orderId === "string") {

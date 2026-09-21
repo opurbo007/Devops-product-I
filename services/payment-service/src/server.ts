@@ -70,7 +70,9 @@ export function createApp(): express.Express {
 
   app.use(validateInternalAuth);
 
-  app.get("/payments", async (req, res, next) => {
+  // Collection root alias: the gateway strips its "/api/payments" mount prefix,
+  // so the dashboard's GET /api/payments arrives here as "/".
+  app.get(["/", "/payments"], async (req, res, next) => {
     try {
       const filter: { status?: string; take?: number } = {};
       if (typeof req.query.status === "string") filter.status = req.query.status;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
@@ -20,10 +20,11 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (user) {
-    router.replace(next);
-    return null;
-  }
+  useEffect(() => {
+    if (user) router.replace(next);
+  }, [user, next, router]);
+
+  if (user) return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
