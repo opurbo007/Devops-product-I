@@ -36,7 +36,7 @@ const DLQ_SERVICES: DlqService[] = [
 type Kpi = { label: string; value: string; delta: string; up: boolean | null; note: string };
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   useRequireAdmin();
   const [orders, setOrders] = useState<Order[]>([]);
   const [failedCount, setFailedCount] = useState(0);
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     (async () => {
       try {
@@ -128,7 +129,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ready]);
 
   const dist = new Map<string, number>();
   for (const o of orders) dist.set(o.status, (dist.get(o.status) ?? 0) + 1);

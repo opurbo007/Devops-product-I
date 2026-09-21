@@ -137,7 +137,7 @@ export async function apiFetch<T>(
     throw new ApiError(0, "Cannot reach the API — is the gateway running?");
   }
 
-  if (res.status === 401 && accessToken && !retried) {
+  if (res.status === 401 && !retried) {
     const fresh = await tryRefresh();
     if (fresh) {
       accessToken = fresh;
