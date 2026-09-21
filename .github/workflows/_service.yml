@@ -22,16 +22,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: ${{ inputs.service-path }}/package-lock.json
+          cache-dependency-path: |
+            ${{ inputs.service-path }}/package-lock.json
+            shared/prisma/package-lock.json
+            shared/platform/package-lock.json
+
+      - name: Install shared Prisma
+        run: npm ci
+        working-directory: shared/prisma
+
+      - name: Install shared Platform
+        run: npm ci
+        working-directory: shared/platform
+
+      - name: Generate Prisma client
+        run: DATABASE_URL="postgresql://postgres:postgres@localhost:5432/app" npx prisma generate
+        working-directory: shared/prisma
 
       - name: Install
         run: npm ci
-        working-directory: ${{ inputs.service-path }}
-
-      - name: Generate Prisma client
-        run: >
-          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/app"
-          npx prisma generate --schema ../../shared/prisma/prisma/schema.prisma
         working-directory: ${{ inputs.service-path }}
 
       - name: Typecheck
