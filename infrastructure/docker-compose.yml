@@ -79,6 +79,9 @@ services:
       DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@postgres:5432/inventory"
       KAFKA_BROKERS: "kafka:29092"
       JWT_INTERNAL_SECRET: ${JWT_INTERNAL_SECRET:-dev-internal-secret-change-me}
+      UPLOAD_DIR: "/app/uploads"
+    volumes:
+      - inventory_uploads:/app/uploads
     depends_on:
       - postgres
       - kafka
@@ -198,5 +201,6 @@ volumes:
   zookeeper_log:
   kafka_data:
   redis_data:
+  inventory_uploads:
   prometheus_data:
   grafana_data:

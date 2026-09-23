@@ -113,7 +113,11 @@ at `localhost:8081`, then poll `GET /api/orders/:id` —
 - Chaos kill-switches (admin, runtime, no restart):
   `GET|POST /api/<svc>/admin/chaos`
   (`INVENTORY_FAIL_RESERVE`, `PAYMENT_DECLINE_CODE`, `SHIPPING_FAIL_DISPATCH`,
-  `NOTIFICATION_FAIL`, `ORDER_FAIL_SAGA`).
+  `NOTIFICATION_FAIL`, `ORDER_FAIL_SAGA`, plus image pipeline:
+  `IMAGE_FAIL_UPLOAD`, `IMAGE_FAIL_WEBP`, `IMAGE_SKIP_WEBP`, `IMAGE_FAIL_SERVE`).
+- Product images (inventory-service): `PUT /api/inventory/products/:sku`
+  (external URL), `POST /api/inventory/products/:sku/image` (multipart upload,
+  auto-WebP via sharp), public `GET /api/inventory/images/*` + `GET /api/inventory/products*`.
 - Chaos Lab (`/chaos` in the admin dashboard): guided outage scenarios,
   order journey timer, load bursts, live circuit-breaker states, fleet health.
 - Metrics: every service exposes `GET /metrics`; Prometheus + Grafana ship in

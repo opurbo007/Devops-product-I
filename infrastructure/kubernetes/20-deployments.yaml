@@ -52,11 +52,19 @@ spec:
             - { name: PORT, value: "3001" }
             - { name: DATABASE_URL, value: "postgresql://postgres:00000000@postgres.ecom.svc.cluster.local:5432/inventory" }
             - { name: KAFKA_BROKERS, value: "kafka.ecom.svc.cluster.local:29092" }
+            - { name: UPLOAD_DIR, value: "/app/uploads" }
             - name: JWT_INTERNAL_SECRET
               valueFrom: { secretKeyRef: { name: ecom-secrets, key: jwt-internal-secret } }
+          volumeMounts:
+            - { name: inventory-uploads, mountPath: /app/uploads }
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: 1000m, memory: 1Gi }
+      volumes:
+        - name: inventory-uploads
+          emptyDir: {}
+          # Production: replace emptyDir with a PVC (ReadWriteMany) or move
+          # to S3/MinIO + presigned URLs — local disk does not scale past 1 replica.
 ---
 apiVersion: apps/v1
 kind: Deployment
