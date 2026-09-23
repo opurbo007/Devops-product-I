@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { gbp } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { productImageSrc } from "@/lib/productImage";
 import type { Product } from "@/data/products";
 
 export function CategoryGlyph({ icon }: { icon: Product["icon"] }) {
@@ -88,6 +90,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const saving = product.wasPrice ? product.wasPrice - product.price : 0;
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
+  // If the image read path fails (IMAGE_FAIL_SERVE chaos, deleted file,
+  // expired CDN), fall back to the category glyph instead of a broken tile.
+  const [imgBroken, setImgBroken] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -96,8 +101,22 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="group flex flex-col rounded-sm border border-zinc-200 bg-white">
-      <div className="relative flex h-44 items-center justify-center border-b border-zinc-100 bg-zinc-50">
-        <CategoryGlyph icon={product.icon} />
+      <div className="relative flex h-44 items-center justify-center overflow-hidden border-b border-zinc-100 bg-zinc-50">
+        {(() => {
+          const src = imgBroken ? null : productImageSrc(product);
+          return src ? (
+            <Image
+              src={src}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover"
+              onError={() => setImgBroken(true)}
+            />
+          ) : (
+            <CategoryGlyph icon={product.icon} />
+          );
+        })()}
         {product.badge && (
           <span className={`absolute left-3 top-3 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${badgeStyle(product.badge)}`}>
             {product.badge === "Save" && saving > 0 ? `Save ${gbp(saving)}` : product.badge}

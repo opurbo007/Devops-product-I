@@ -52,6 +52,16 @@ export interface StockLevel {
   reserved: number;
 }
 
+export interface ProductMeta {
+  sku: string;
+  name: string | null;
+  imageUrl: string | null;
+  updatedAt: string;
+  /** Upload-only: true when sharp converted to WebP, degraded when skipped. */
+  converted?: boolean;
+  degraded?: boolean;
+}
+
 export interface Shipment {
   id: string;
   orderId: string;
@@ -244,6 +254,40 @@ export function apiPutCartItem(
 
 export function apiGetStock(sku: string): Promise<StockLevel> {
   return apiFetch<StockLevel>(`/api/inventory/stock/${sku}`);
+}
+
+// --- Product images (public reads; admin writes require Bearer) ---
+
+export function apiListProducts(): Promise<ProductMeta[]> {
+  return apiFetch<ProductMeta[]>(`/api/inventory/products`);
+}
+
+export function apiGetProductMeta(sku: string): Promise<ProductMeta> {
+  return apiFetch<ProductMeta>(`/api/inventory/products/${sku}`);
+}
+
+export function apiPutProductMeta(
+  sku: string,
+  input: { name?: string | null; imageUrl?: string | null },
+): Promise<ProductMeta> {
+  return apiFetch<ProductMeta>(
+    `/api/inventory/products/${encodeURIComponent(sku)}`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
+}
+
+export function apiUploadProductImage(
+  sku: string,
+  file: File,
+): Promise<ProductMeta> {
+  const form = new FormData();
+  form.append("image", file);
+  // apiFetch skips the JSON content-type for FormData so the browser sets
+  // the multipart boundary; the gateway streams it to inventory-service.
+  return apiFetch<ProductMeta>(
+    `/api/inventory/products/${encodeURIComponent(sku)}/image`,
+    { method: "POST", body: form },
+  );
 }
 
 export function apiGetRecommendations(userId: string): Promise<Recommendation[]> {

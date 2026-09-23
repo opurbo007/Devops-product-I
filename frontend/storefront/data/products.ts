@@ -16,6 +16,8 @@ export type Product = {
   ramGB?: number;
   storageGB?: number;
   colour?: string;
+  /** Backend image URL (https://… or /images/<file> via gateway). Absent in mock data. */
+  imageUrl?: string;
 };
 
 export const bestSellers: Product[] = [

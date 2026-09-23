@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import type { Product } from "@/data/catalog";
 import { Badge } from "@/components/ui/badge";
 import { gbp } from "@/lib/format";
+import { productImageSrc } from "@/lib/productImage";
 
 const VIEWS = ["Front", "Profile", "Keyboard", "Ports"] as const;
 
@@ -56,16 +58,30 @@ function ViewArt({ view }: { view: (typeof VIEWS)[number] }) {
 export default function ProductGallery({ product }: { product: Product }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>("Front");
   const saving = (product.wasPrice ?? product.price) - product.price;
+  const [imgBroken, setImgBroken] = useState(false);
+  const src = imgBroken ? null : productImageSrc(product);
 
   return (
     <div>
-      <div className="relative flex h-80 items-center justify-center rounded-sm border border-zinc-200 bg-zinc-50 sm:h-[420px]">
-        <div className="text-center">
-          <ViewArt view={view} />
-          <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.12em] text-zinc-400">
-            {product.brand} · {view} view
-          </p>
-        </div>
+      <div className="relative flex h-80 items-center justify-center overflow-hidden rounded-sm border border-zinc-200 bg-zinc-50 sm:h-[420px]">
+        {src ? (
+          <Image
+            src={src}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover"
+            priority
+            onError={() => setImgBroken(true)}
+          />
+        ) : (
+          <div className="text-center">
+            <ViewArt view={view} />
+            <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+              {product.brand} · {view} view
+            </p>
+          </div>
+        )}
         <div className="absolute left-4 top-4 flex gap-2">
           {product.badge === "Save" && saving > 0 && <Badge variant="sale">Save {gbp(saving)}</Badge>}
           {product.badge === "New" && <Badge>New</Badge>}
@@ -77,26 +93,30 @@ export default function ProductGallery({ product }: { product: Product }) {
           )}
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-4 gap-3" role="tablist" aria-label="Product views">
-        {VIEWS.map((v) => (
-          <button
-            key={v}
-            role="tab"
-            aria-selected={view === v}
-            onClick={() => setView(v)}
-            className={`flex h-20 flex-col items-center justify-center gap-1 rounded-sm border bg-white text-[11.5px] font-semibold ${
-              view === v ? "border-zinc-950 text-zinc-950" : "border-zinc-200 text-zinc-500 hover:border-zinc-400"
-            }`}
-          >
-            <span aria-hidden="true" className="text-[15px] leading-none">
-              {v === "Front" ? "▢" : v === "Profile" ? "▷" : v === "Keyboard" ? "▦" : "⇄"}
-            </span>
-            {v}
-          </button>
-        ))}
-      </div>
+      {!src && (
+        <div className="mt-3 grid grid-cols-4 gap-3" role="tablist" aria-label="Product views">
+          {VIEWS.map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => setView(v)}
+              className={`flex h-20 flex-col items-center justify-center gap-1 rounded-sm border bg-white text-[11.5px] font-semibold ${
+                view === v ? "border-zinc-950 text-zinc-950" : "border-zinc-200 text-zinc-500 hover:border-zinc-400"
+              }`}
+            >
+              <span aria-hidden="true" className="text-[15px] leading-none">
+                {v === "Front" ? "▢" : v === "Profile" ? "▷" : v === "Keyboard" ? "▦" : "⇄"}
+              </span>
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="mt-3 text-[12px] leading-relaxed text-zinc-500">
-        Images are illustrative of the model range. Your exact colour and specification are listed below.
+        {src
+          ? "Photo of the listed product."
+          : "Images are illustrative of the model range. Your exact colour and specification are listed below."}
       </p>
     </div>
   );
