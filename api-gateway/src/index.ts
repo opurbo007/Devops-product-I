@@ -92,6 +92,20 @@ app.get("/api/health/:service", requireAuth, async (req, res) => {
       .json({ ok: false, service: req.params.service, status: "down" });
   }
 });
+// Public image + catalog reads: storefront <img> tags carry no Authorization
+// header, so these bypass requireAuth. Writes (PUT /products, POST image)
+// stay behind the authenticated mount below (inventory enforces requireAdmin).
+// Multipart uploads stream through http-proxy-middleware untouched — do NOT
+// add express.json()/urlencoded before these mounts.
+app.use(
+  "/api/inventory/images",
+  proxyToService(inventoryServiceUrl, "/api/inventory"),
+);
+app.get("/api/inventory/products", proxyToService(inventoryServiceUrl, "/api/inventory"));
+app.get(
+  "/api/inventory/products/:sku",
+  proxyToService(inventoryServiceUrl, "/api/inventory"),
+);
 app.use("/api/inventory", requireAuth, proxyToService(inventoryServiceUrl, "/api/inventory"));
 app.use("/api/shipping", requireAuth, proxyToService(shippingServiceUrl, "/api/shipping"));
 app.use("/api/payments", requireAuth, proxyToService(paymentServiceUrl, "/api/payments"));
