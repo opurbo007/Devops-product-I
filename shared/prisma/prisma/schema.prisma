@@ -44,6 +44,15 @@ model Stock {
   @@map("stock")
 }
 
+model Product {
+  sku       String   @id
+  name      String?
+  imageUrl  String?  @map("image_url")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("products")
+}
+
 model Reservation {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderId   String   @map("order_id") @db.Uuid
