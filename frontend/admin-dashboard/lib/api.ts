@@ -400,7 +400,13 @@ export function apiSetChaos(
 /** Flags the dashboard toggles per service. "" value clears the flag. */
 export const CHAOS_FLAGS: Record<DlqService, { flag: string; label: string }[]> = {
   orders: [{ flag: "ORDER_FAIL_SAGA", label: "Fail saga tracking" }],
-  inventory: [{ flag: "INVENTORY_FAIL_RESERVE", label: "Fail reservations" }],
+  inventory: [
+    { flag: "INVENTORY_FAIL_RESERVE", label: "Fail reservations" },
+    { flag: "IMAGE_FAIL_UPLOAD", label: "Fail image uploads (502)" },
+    { flag: "IMAGE_FAIL_WEBP", label: "Crash WebP conversion" },
+    { flag: "IMAGE_SKIP_WEBP", label: "Skip WebP (degraded speed)" },
+    { flag: "IMAGE_FAIL_SERVE", label: "Fail image reads (502)" },
+  ],
   shipping: [{ flag: "SHIPPING_FAIL_DISPATCH", label: "Fail dispatch" }],
   payments: [
     { flag: "PAYMENT_DECLINE_CODE", label: "Decline code (e.g. card_declined)" },

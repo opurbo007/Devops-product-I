@@ -71,6 +71,29 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "image-outage",
+    title: "Image pipeline outage",
+    blurb: "Uploads 502 and WebP conversion crashes — no partial rows, no orphan files. Serve path can also 502 so the storefront must fall back to its glyph.",
+    apply: [
+      { service: "inventory", flag: "IMAGE_FAIL_UPLOAD", value: "1" },
+      { service: "inventory", flag: "IMAGE_FAIL_WEBP", value: "1" },
+    ],
+    watch: [
+      { label: "Inventory service", href: "/services/inventory" },
+      { label: "Fine-grained kill-switches", href: "#chaos-flags" },
+    ],
+  },
+  {
+    id: "image-degraded",
+    title: "Image degraded (no WebP)",
+    blurb: "Conversion skipped — original JPEG/PNG served as-is. Correct but larger/slower; uploads report degraded:true.",
+    apply: [{ service: "inventory", flag: "IMAGE_SKIP_WEBP", value: "1" }],
+    watch: [
+      { label: "Inventory service", href: "/services/inventory" },
+      { label: "Fine-grained kill-switches", href: "#chaos-flags" },
+    ],
+  },
+  {
     id: "shipping-blackout",
     title: "Shipping blackout",
     blurb: "Paid orders never dispatch. payment.completed.DLQ grows — replay it after reset to drain the backlog.",
