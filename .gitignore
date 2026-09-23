@@ -197,3 +197,8 @@ temp/
 .netlify
 firebase-debug.log
 firestore-debug.log
+
+# ---------- Product image uploads (local lightweight store) ----------
+uploads/
+services/*/uploads/
+services/*/uploads/**

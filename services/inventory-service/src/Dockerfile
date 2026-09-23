@@ -20,7 +20,8 @@ COPY services/inventory-service/ ./services/inventory-service/
 WORKDIR /app/services/inventory-service
 RUN DATABASE_URL="postgresql://postgres:postgres@localhost:5432/inventory" npx prisma generate --schema ../../shared/prisma/prisma/schema.prisma
 
-ENV PORT=3001 NODE_ENV=production
+ENV PORT=3001 NODE_ENV=production UPLOAD_DIR=/app/uploads
 EXPOSE 3001
+RUN mkdir -p /app/uploads
 
 CMD ["npx", "tsx", "src/index.ts"]
