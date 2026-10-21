@@ -10,89 +10,78 @@
 
 ```mermaid
 graph TD
-    %% Services
-    subgraph Gateway [API Gateway: Port 8081]
-        GW[Gateway (Node/Express)]
+    subgraph GATEWAY["API Gateway : Port 8081"]
+        GW["Gateway - Node/Express"]
     end
 
-    subgraph SF [Storefront]
-        SF1[Next.js Storefront: Port 3006]
+    subgraph FRONTENDS["Next.js Frontends"]
+        SF["Storefront : 3006"]
+        AD["Admin Dashboard : 3007"]
     end
 
-    subgraph AD [Admin Dashboard]
-        AD1[Next.js Admin: Port 3007]
+    subgraph STREAM["Kafka Cluster"]
+        KAFKA["Kafka Broker"]
     end
 
-    %% Kafka
-    subgraph KafkaCluster [Kafka Cluster]
-        K[Kafka Broker]
+    subgraph DBS["PostgreSQL - one DB per service"]
+        PG_ORDER[("order-db")]
+        PG_INV[("inventory-db")]
+        PG_SHIP[("shipping-db")]
+        PG_PAY[("payment-db")]
+        PG_NOTIF[("notification-db")]
+        PG_CART[("cart-db")]
     end
 
-    %% Databases
-    subgraph PG [PostgreSQL Instances]
-        PG1[(order-db)]
-        PG2[(inventory-db)]
-        PG3[(shipping-db)]
-        PG4[(payment-db)]
-        PG5[(notification-db)]
-        PG6[(cart-db)]
+    subgraph CACHE["Redis Cache"]
+        REDIS["Redis"]
     end
 
-    %% Redis
-    subgraph Redis [Redis Cache]
-        RED[Redis]
-    end
+    ORDER_SVC["order-service : 3000<br/>Saga Orchestrator"]
+    INV_SVC["inventory-service : 3001<br/>Stock Reserve/Release"]
+    SHIP_SVC["shipping-service : 3002<br/>Fulfillment/Tracking"]
+    PAY_SVC["payment-service : 3003<br/>Payments/Refunds"]
+    NOTIF_SVC["notification-service : 3004<br/>Email/SMS"]
+    CART_SVC["cart-recommendation : 3005<br/>Carts and Recommendations"]
 
-    %% Services
-    OS[order-service: 3000]\nSaga Orchestrator
-    IS[inventory-service: 3001]\nStock Reserve/Release
-    SS[shipping-service: 3002]\nFulfillment/Tracking
-    PS[payment-service: 3003]\nPayments/Refunds
-    NS[notification-service: 3004]\nEmail/SMS
-    CS[cart-recommendation: 3005]\nCarts + Recommendations
+    GW -->|"HTTP JSON"| ORDER_SVC
+    GW -->|"HTTP JSON"| INV_SVC
+    GW -->|"HTTP JSON"| SHIP_SVC
+    GW -->|"HTTP JSON"| PAY_SVC
+    GW -->|"HTTP JSON"| NOTIF_SVC
+    GW -->|"HTTP JSON"| CART_SVC
 
-    %% Connections
-    GW -->|HTTP JSON| OS
-    GW -->|HTTP JSON| IS
-    GW -->|HTTP JSON| SS
-    GW -->|HTTP JSON| PS
-    GW -->|HTTP JSON| NS
-    GW -->|HTTP JSON| CS
+    ORDER_SVC -->|"Kafka Events"| KAFKA
+    INV_SVC -->|"Kafka Events"| KAFKA
+    SHIP_SVC -->|"Kafka Events"| KAFKA
+    PAY_SVC -->|"Kafka Events"| KAFKA
+    NOTIF_SVC -->|"Kafka Events"| KAFKA
+    CART_SVC -->|"Kafka Events"| KAFKA
 
-    OS -->|Kafka Events| K
-    IS -->|Kafka Events| K
-    SS -->|Kafka Events| K
-    PS -->|Kafka Events| K
-    NS -->|Kafka Events| K
-    CS -->|Kafka Events| K
+    KAFKA -->|"Consumes"| ORDER_SVC
+    KAFKA -->|"Consumes"| INV_SVC
+    KAFKA -->|"Consumes"| SHIP_SVC
+    KAFKA -->|"Consumes"| PAY_SVC
+    KAFKA -->|"Consumes"| NOTIF_SVC
+    KAFKA -->|"Consumes"| CART_SVC
 
-    K -->|Consumes| OS
-    K -->|Consumes| IS
-    K -->|Consumes| SS
-    K -->|Consumes| PS
-    K -->|Consumes| NS
-    K -->|Consumes| CS
+    ORDER_SVC -->|"DATABASE"| PG_ORDER
+    INV_SVC -->|"DATABASE"| PG_INV
+    SHIP_SVC -->|"DATABASE"| PG_SHIP
+    PAY_SVC -->|"DATABASE"| PG_PAY
+    NOTIF_SVC -->|"DATABASE"| PG_NOTIF
+    CART_SVC -->|"DATABASE"| PG_CART
 
-    OS -->|DATABASE| PG1
-    IS -->|DATABASE| PG2
-    SS -->|DATABASE| PG3
-    PS -->|DATABASE| PG4
-    NS -->|DATABASE| PG5
-    CS -->|DATABASE| PG6
+    GW -->|"REDIS CACHE"| REDIS
+    ORDER_SVC -->|"RATE LIMITS"| REDIS
 
-    GW -->|REDIS CACHE| RED
-    OS -->|RATE LIMITS| RED
+    SF -->|"HTTPS"| GW
+    AD -->|"HTTPS"| GW
 
-    %% Frontend connections
-    SF1 -->|HTTPS| GW
-    AD1 -->|HTTPS| GW
-
-    style Gateway fill:#e3f2fd,stroke:#1976b2,stroke-width:2px
-    style KafkaCluster fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style PG fill:#e8f5e9,stroke:#388e3c,stroke-width:1px,stroke-dasharray: 5 5
-    style Redis fill:#fff8e1,stroke:#f57c00,stroke-width:1px,stroke-dasharray: 5 5
-    style Services fill:#f3e5f5,stroke:#8e24aa,stroke-width:1px,stroke-dasharray: 5 5
-    style Frontends fill:#e0f7fa,-badge:true,stroke:#00bcd4,stroke-width:2px
+    style GATEWAY fill:#e3f2fd,stroke:#1976b2,stroke-width:2px
+    style FRONTENDS fill:#e0f7fa,stroke:#00bcd4,stroke-width:2px
+    style STREAM fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
+    style DBS fill:#e8f5e9,stroke:#388e3c,stroke-width:1px
+    style CACHE fill:#fff8e1,stroke:#f57c00,stroke-width:1px
 ```
 
 ---
