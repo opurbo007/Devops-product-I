@@ -44,39 +44,39 @@ graph TD
     end
 
     %% Services
-    OS[order-service: 3000]\nSaga Orchestrator
-    IS[inventory-service: 3001]\nStock Reserve/Release
-    SS[shipping-service: 3002]\nFulfillment/Tracking
-    PS[payment-service: 3003]\nPayments/Refunds
-    NS[notification-service: 3004]\nEmail/SMS
-    CS[cart-recommendation: 3005]\nCarts + Recommendations
+    OS[order-service: 3000<br/>Saga Orchestrator]
+    IS[inventory-service: 3001<br/>Stock Reserve/Release]
+    SS[shipping-service: 3002<br/>Fulfillment/Tracking]
+    PAY[payment-service: 3003<br/>Payments/Refunds]
+    NS[notification-service: 3004<br/>Email/SMS]
+    CS[cart-recommendation: 3005<br/>Carts + Recommendations]
 
     %% Connections
     GW -->|HTTP JSON| OS
     GW -->|HTTP JSON| IS
     GW -->|HTTP JSON| SS
-    GW -->|HTTP JSON| PS
+    GW -->|HTTP JSON| PAY
     GW -->|HTTP JSON| NS
     GW -->|HTTP JSON| CS
 
     OS -->|Kafka Events| K
     IS -->|Kafka Events| K
     SS -->|Kafka Events| K
-    PS -->|Kafka Events| K
+    PAY -->|Kafka Events| K
     NS -->|Kafka Events| K
     CS -->|Kafka Events| K
 
     K -->|Consumes| OS
     K -->|Consumes| IS
     K -->|Consumes| SS
-    K -->|Consumes| PS
+    K -->|Consumes| PAY
     K -->|Consumes| NS
     K -->|Consumes| CS
 
     OS -->|DATABASE| PG1
     IS -->|DATABASE| PG2
     SS -->|DATABASE| PG3
-    PS -->|DATABASE| PG4
+    PAY -->|DATABASE| PG4
     NS -->|DATABASE| PG5
     CS -->|DATABASE| PG6
 
@@ -92,7 +92,7 @@ graph TD
     style PG fill:#e8f5e9,stroke:#388e3c,stroke-width:1px,stroke-dasharray: 5 5
     style Redis fill:#fff8e1,stroke:#f57c00,stroke-width:1px,stroke-dasharray: 5 5
     style Services fill:#f3e5f5,stroke:#8e24aa,stroke-width:1px,stroke-dasharray: 5 5
-    style Frontends fill:#e0f7fa,-badge:true,stroke:#00bcd4,stroke-width:2px
+    style Frontends fill:#e0f7fa,stroke:#00bcd4,stroke-width:2px
 ```
 
 ---
