@@ -178,7 +178,8 @@ target/
 .gradle/
 
 # ---------- Misc ----------
-# Local-only Windows launcher (personal workflow, never push)
+# Local-only Windows launcher scripts (personal workflow, never push)
+start-all.bat
 start-services.bat
 # AI agent files (local-only, never push)
 AGENTS.md
